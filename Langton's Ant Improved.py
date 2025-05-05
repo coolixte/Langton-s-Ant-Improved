@@ -4,6 +4,7 @@
 # NOTES ✦ ---------------------------------------------------------------------------------------------
 
 # Info button, settings button, exit button
+# Cliquer des cases pour les colorer
 
 # MODULES ✦ -------------------------------------------------------------------------------------------
 import pygame
@@ -18,7 +19,7 @@ WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 GRID_SIZE = 5  # Initial cell size in pixels
 GRID_WIDTH = 200  # Number of cells in the grid width
-GRID_HEIGHT = 200  # Number of cells in the grid height
+GRID_HEIGHT = 200  # Number of cells in  the grid height
 BG_COLOR = (255, 255, 255)  # White
 ANT_COLOR = (255, 0, 0)  # Red
 CELL_ON_COLOR = (0, 0, 0)  # Black
