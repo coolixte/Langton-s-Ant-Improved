@@ -67,7 +67,7 @@ SPEED_INPUT_Y = SPEED_BUTTON_Y
 SPEED_INPUT_WIDTH = 50
 SPEED_INPUT_HEIGHT = BUTTON_HEIGHT
 SPEED_INPUT_ACTIVE = False
-SPEED_INPUT_TEXT = "0.1"
+SPEED_INPUT_TEXT = "1"
 
 # Pause/Play button
 PAUSE_BUTTON_X = MENU_BUTTON_X
@@ -86,6 +86,13 @@ MODIFY_BUTTON_TEXT = "MODIFY PIXELS"
 MODIFY_MODE = False  # Track if in modify mode
 MODIFY_HIGHLIGHT_COLOR = (170, 0, 170)  # Mauve color for highlighting
 
+# Reset button
+RESET_BUTTON_X = MENU_BUTTON_X
+RESET_BUTTON_Y = MODIFY_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+RESET_BUTTON_WIDTH = BUTTON_WIDTH
+RESET_BUTTON_HEIGHT = BUTTON_HEIGHT
+RESET_BUTTON_TEXT = "RESET"
+
 # Sound files
 START_SOUND = pygame.mixer.Sound(os.path.join("assets", "start.mp3"))
 WHITE_TO_BLACK_SOUND = pygame.mixer.Sound(os.path.join("assets", "2-bell.mp3"))
@@ -95,6 +102,12 @@ BLACK_TO_WHITE_SOUND = pygame.mixer.Sound(os.path.join("assets", "1-bell.mp3"))
 ATTRIBUTION_TEXT = "2025 · @Calixte Lamotte"
 ATTRIBUTION_X = WINDOW_WIDTH // 2  # Centered horizontally
 ATTRIBUTION_Y = WINDOW_HEIGHT - 15  # 15 pixels from bottom
+
+# Steps counter button constants
+STEPS_BUTTON_WIDTH = BUTTON_WIDTH + 40
+STEPS_BUTTON_X = WINDOW_WIDTH // 2 - STEPS_BUTTON_WIDTH // 2  # Centered using button's own width
+STEPS_BUTTON_Y = ATTRIBUTION_Y - BUTTON_HEIGHT - 10  # Above attribution with 10px margin
+STEPS_BUTTON_HEIGHT = BUTTON_HEIGHT
 
 # Title text constants
 TITLE_TEXT = "LANGTON'S ANT IMPROVED"
@@ -109,7 +122,7 @@ INSTRUCTION_Y = 50  # Adjusted to be below title
 INSTRUCTION_SIZE = 12  # Font size
 
 # Simulation parameters
-SIMULATION_SPEED = 0.1  # Steps per frame (now supports fractional values)
+SIMULATION_SPEED = 1  # Steps per frame (now supports fractional values)
 
 class LangtonAnt:
     def __init__(self, grid_width, grid_height):
@@ -256,7 +269,7 @@ class Simulation:
                         # Speed input field clicked
                         self.speed_input_active = True
                         # Reset input text if it's the default value
-                        if self.speed_input_text == "0.1" and SIMULATION_SPEED != 0.1:
+                        if self.speed_input_text == "1" and SIMULATION_SPEED != 1:
                             self.speed_input_text = str(SIMULATION_SPEED)
                     elif self.is_point_in_rect(mouse_pos, (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT)):
                         # Pause/Play button clicked
@@ -264,6 +277,10 @@ class Simulation:
                     elif self.is_point_in_rect(mouse_pos, (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)):
                         # Toggle modify mode
                         self.modify_mode = not self.modify_mode
+                    elif self.is_point_in_rect(mouse_pos, (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)):
+                        # Reset button clicked
+                        self.ant = LangtonAnt(GRID_WIDTH, GRID_HEIGHT)
+                        self.step_accumulator = 0.0  # Reset accumulator on reset
                     # If none of the menu buttons were clicked, continue to other checks
                     else:
                         # Handle other mouse actions
@@ -403,6 +420,10 @@ class Simulation:
         attribution_rect = attribution_surface.get_rect(center=(ATTRIBUTION_X, ATTRIBUTION_Y))
         self.screen.blit(attribution_surface, attribution_rect)
         
+        # Draw steps counter button
+        steps_text = f"PAS: {self.ant.steps}"
+        self.draw_button(STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT, steps_text)
+        
         # Draw buttons
         self.draw_button(EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, EXIT_BUTTON_TEXT)
         self.draw_button(INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, INFO_BUTTON_TEXT) 
@@ -436,6 +457,9 @@ class Simulation:
                 # When inactive, don't use override color so hover effect can work
                 self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
                                 MODIFY_BUTTON_TEXT)
+            
+            # Draw reset button
+            self.draw_button(RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT, RESET_BUTTON_TEXT)
         
         pygame.display.flip()
     
@@ -457,6 +481,10 @@ class Simulation:
             button_name = "PAUSE"
         elif (x, y, width, height) == (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT):
             button_name = "MODIFY"
+        elif (x, y, width, height) == (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT):
+            button_name = "RESET"
+        elif (x, y, width, height) == (STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT):
+            button_name = "STEPS"
         
         # Determine button color based on hover and override
         if override_color:
@@ -514,7 +542,8 @@ class Simulation:
         button_regions = {
             "EXIT": (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
             "INFO": (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
-            "MENU": (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+            "MENU": (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
+            "STEPS": (STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT)
         }
         
         # Add menu option buttons if menu is open
@@ -523,7 +552,8 @@ class Simulation:
                 "SPEED": (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT),
                 "SPEED_INPUT": (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT),
                 "PAUSE": (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT),
-                "MODIFY": (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)
+                "MODIFY": (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT),
+                "RESET": (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)
             })
         
         # Check if mouse is over any button
