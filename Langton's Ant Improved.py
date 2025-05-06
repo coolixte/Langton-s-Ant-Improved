@@ -52,6 +52,38 @@ MENU_BUTTON_X = WINDOW_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN
 MENU_BUTTON_Y = INFO_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 MENU_BUTTON_TEXT = "MENU"
 
+# Menu options constants
+MENU_OPEN = False  # Track if menu is open
+SPEED_BUTTON_X = MENU_BUTTON_X + -95
+SPEED_BUTTON_Y = MENU_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+SPEED_BUTTON_WIDTH = 120
+SPEED_BUTTON_HEIGHT = BUTTON_HEIGHT
+SPEED_BUTTON_TEXT = "SPEED"
+
+# Speed input field
+SPEED_INPUT_X = SPEED_BUTTON_X + SPEED_BUTTON_WIDTH + 5
+SPEED_INPUT_Y = SPEED_BUTTON_Y
+SPEED_INPUT_WIDTH = 50
+SPEED_INPUT_HEIGHT = BUTTON_HEIGHT
+SPEED_INPUT_ACTIVE = False
+SPEED_INPUT_TEXT = "0.1"
+
+# Pause/Play button
+PAUSE_BUTTON_X = MENU_BUTTON_X
+PAUSE_BUTTON_Y = SPEED_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+PAUSE_BUTTON_WIDTH = BUTTON_WIDTH
+PAUSE_BUTTON_HEIGHT = BUTTON_HEIGHT
+PAUSE_BUTTON_TEXT = "PAUSE"
+PLAY_BUTTON_TEXT = "PLAY"
+
+# Modify pixels button
+MODIFY_BUTTON_X = MENU_BUTTON_X + -40
+MODIFY_BUTTON_Y = PAUSE_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN 
+MODIFY_BUTTON_WIDTH = BUTTON_WIDTH + 40
+MODIFY_BUTTON_HEIGHT = BUTTON_HEIGHT
+MODIFY_BUTTON_TEXT = "MODIFY PIXELS"
+MODIFY_MODE = False  # Track if in modify mode
+
 # Sound files
 START_SOUND = pygame.mixer.Sound(os.path.join("assets", "start.mp3"))
 WHITE_TO_BLACK_SOUND = pygame.mixer.Sound(os.path.join("assets", "2-bell.mp3"))
@@ -147,6 +179,12 @@ class Simulation:
         self.running = True
         self.paused = False
         
+        # Menu state
+        self.menu_open = MENU_OPEN
+        self.speed_input_active = SPEED_INPUT_ACTIVE
+        self.speed_input_text = SPEED_INPUT_TEXT
+        self.modify_mode = MODIFY_MODE
+        
         # For handling fractional speeds
         self.step_accumulator = 0.0
         
@@ -171,6 +209,26 @@ class Simulation:
                     self.step_accumulator = 0.0  # Reset accumulator on reset
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
+                
+                # Handle speed input field
+                if self.speed_input_active:
+                    if event.key == pygame.K_RETURN:
+                        # Submit speed value
+                        try:
+                            new_speed = float(self.speed_input_text)
+                            if new_speed > 0:
+                                global SIMULATION_SPEED
+                                SIMULATION_SPEED = new_speed
+                        except ValueError:
+                            # Invalid input, reset to current speed
+                            self.speed_input_text = str(SIMULATION_SPEED)
+                        self.speed_input_active = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.speed_input_text = self.speed_input_text[:-1]
+                    else:
+                        # Only add digit characters and decimal point
+                        if event.unicode.isdigit() or event.unicode == '.':
+                            self.speed_input_text += event.unicode
             
             # Mouse controls for buttons and panning
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -184,13 +242,72 @@ class Simulation:
                     # Info button clicked - no functionality yet
                     pass
                 elif self.is_point_in_rect(mouse_pos, (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
-                    # Menu button clicked - no functionality yet
-                    pass
-                elif event.button == pygame.BUTTON_LEFT:
-                    self.panning = True
-                    self.last_mouse_pos = event.pos
-                    # Change cursor to closed/grabbing hand when panning
-                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_SIZEALL)
+                    # Menu button clicked - toggle menu
+                    self.menu_open = not self.menu_open
+                
+                # Only check for menu option clicks if menu is open
+                elif self.menu_open:
+                    if self.is_point_in_rect(mouse_pos, (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT)):
+                        # Speed button clicked - no functionality other than highlighting input field
+                        pass
+                    elif self.is_point_in_rect(mouse_pos, (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT)):
+                        # Speed input field clicked
+                        self.speed_input_active = True
+                        # Reset input text if it's the default value
+                        if self.speed_input_text == "0.1" and SIMULATION_SPEED != 0.1:
+                            self.speed_input_text = str(SIMULATION_SPEED)
+                    elif self.is_point_in_rect(mouse_pos, (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT)):
+                        # Pause/Play button clicked
+                        self.paused = not self.paused
+                    elif self.is_point_in_rect(mouse_pos, (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)):
+                        # Toggle modify mode
+                        self.modify_mode = not self.modify_mode
+                
+                # Handle pixel modification when in modify mode
+                elif self.modify_mode and event.button == pygame.BUTTON_LEFT:
+                    # Convert screen coordinates to grid coordinates
+                    grid_x = int((mouse_pos[0] - self.offset_x) / self.zoom)
+                    grid_y = int((mouse_pos[1] - self.offset_y) / self.zoom)
+                    
+                    # Check if within grid bounds
+                    if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
+                        # Toggle cell state
+                        current_cell = self.ant.grid[grid_x, grid_y]
+                        self.ant.grid[grid_x, grid_y] = 1 - current_cell
+                        
+                        # Play appropriate sound based on the transition
+                        if current_cell == 0:
+                            # White to black transition
+                            WHITE_TO_BLACK_SOUND.play()
+                        else:
+                            # Black to white transition
+                            BLACK_TO_WHITE_SOUND.play()
+                
+                # Handle panning if not clicking on any buttons or in modify mode
+                elif not self.modify_mode and event.button == pygame.BUTTON_LEFT:
+                    # Only start panning if not on a button
+                    button_regions = [
+                        (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
+                        (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
+                        (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+                    ]
+                    
+                    if self.menu_open:
+                        # Add menu option regions
+                        button_regions.extend([
+                            (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT),
+                            (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT),
+                            (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT),
+                            (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)
+                        ])
+                    
+                    is_on_button = any(self.is_point_in_rect(mouse_pos, rect) for rect in button_regions)
+                    
+                    if not is_on_button:
+                        self.panning = True
+                        self.last_mouse_pos = mouse_pos
+                        # Change cursor to closed/grabbing hand when panning
+                        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_SIZEALL)
                 
                 # Zoom with scroll wheel centered on cursor position
                 elif event.button == 4:  # Scroll up (zoom in)
@@ -307,13 +424,38 @@ class Simulation:
         self.draw_button(INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, INFO_BUTTON_TEXT) 
         self.draw_button(MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, MENU_BUTTON_TEXT)
         
+        # Draw menu options if menu is open
+        if self.menu_open:
+            # Speed button and input field
+            self.draw_button(SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT, SPEED_BUTTON_TEXT)
+            
+            # Draw speed input field
+            input_color = (50, 50, 50) if self.speed_input_active else (100, 100, 100)
+            input_rect = pygame.Rect(SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT)
+            pygame.draw.rect(self.screen, input_color, input_rect, border_radius=BUTTON_BORDER_RADIUS)
+            
+            # Draw input text
+            input_text_surface = self.button_font.render(self.speed_input_text, True, BUTTON_TEXT_COLOR)
+            input_text_rect = input_text_surface.get_rect(center=(SPEED_INPUT_X + SPEED_INPUT_WIDTH // 2, SPEED_INPUT_Y + SPEED_INPUT_HEIGHT // 2))
+            self.screen.blit(input_text_surface, input_text_rect)
+            
+            # Draw pause/play button with appropriate text
+            pause_text = PLAY_BUTTON_TEXT if self.paused else PAUSE_BUTTON_TEXT
+            self.draw_button(PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT, pause_text)
+            
+            # Draw modify pixels button with highlight if active
+            modify_color = (100, 0, 0) if self.modify_mode else BUTTON_COLOR
+            self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
+                            MODIFY_BUTTON_TEXT, override_color=modify_color)
+        
         pygame.display.flip()
     
-    def draw_button(self, x, y, width, height, text):
+    def draw_button(self, x, y, width, height, text, override_color=None):
         """Draw a button with text centered on it"""
         # Draw the button rectangle
         button_rect = pygame.Rect(x, y, width, height)
-        pygame.draw.rect(self.screen, BUTTON_COLOR, button_rect, border_radius=BUTTON_BORDER_RADIUS)
+        button_color = override_color if override_color else BUTTON_COLOR
+        pygame.draw.rect(self.screen, button_color, button_rect, border_radius=BUTTON_BORDER_RADIUS)
         
         # Draw the text centered on the button
         text_surface = self.button_font.render(text, True, BUTTON_TEXT_COLOR)
