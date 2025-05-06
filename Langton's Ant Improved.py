@@ -427,10 +427,15 @@ class Simulation:
             pause_text = PLAY_BUTTON_TEXT if self.paused else PAUSE_BUTTON_TEXT
             self.draw_button(PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT, pause_text)
             
-            # Draw modify pixels button with highlight if active
-            modify_color = MODIFY_HIGHLIGHT_COLOR if self.modify_mode else BUTTON_COLOR
-            self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
-                            MODIFY_BUTTON_TEXT, override_color=modify_color)
+            # Draw modify pixels button with highlight if active, otherwise allow hover effect
+            if self.modify_mode:
+                # When active, always use the highlight color (no hover effect)
+                self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
+                                MODIFY_BUTTON_TEXT, override_color=MODIFY_HIGHLIGHT_COLOR)
+            else:
+                # When inactive, don't use override color so hover effect can work
+                self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
+                                MODIFY_BUTTON_TEXT)
         
         pygame.display.flip()
     
