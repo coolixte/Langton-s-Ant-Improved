@@ -33,6 +33,7 @@ BUTTON_WIDTH = 80
 BUTTON_HEIGHT = 30
 BUTTON_MARGIN = 10
 BUTTON_COLOR = (0, 0, 0)  # Black
+BUTTON_HOVER_COLOR = (100, 100, 100)  # Light grey
 BUTTON_TEXT_COLOR = (255, 255, 255)  # White
 BUTTON_FONT_SIZE = 14
 BUTTON_BORDER_RADIUS = 5
@@ -175,6 +176,7 @@ class Simulation:
         self.panning = False
         self.last_mouse_pos = (0, 0)
         self.hovered_cell = (-1, -1)  # Track cell currently being hovered over
+        self.hovered_button = None  # Track button currently being hovered over
         
         # Simulation state
         self.running = True
@@ -293,6 +295,9 @@ class Simulation:
                 else:
                     # Reset hovered cell when not in modify mode
                     self.hovered_cell = (-1, -1)
+                
+                # Update hovered button state
+                self.update_hovered_button(mouse_pos)
                 
                 if self.panning:
                     dx = mouse_pos[0] - self.last_mouse_pos[0]
@@ -431,9 +436,34 @@ class Simulation:
     
     def draw_button(self, x, y, width, height, text, override_color=None):
         """Draw a button with text centered on it"""
+        # Determine button name for hover effect
+        button_name = None
+        if (x, y, width, height) == (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT):
+            button_name = "EXIT"
+        elif (x, y, width, height) == (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT):
+            button_name = "INFO"
+        elif (x, y, width, height) == (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT):
+            button_name = "MENU"
+        elif (x, y, width, height) == (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT):
+            button_name = "SPEED"
+        elif (x, y, width, height) == (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT):
+            button_name = "SPEED_INPUT"
+        elif (x, y, width, height) == (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT):
+            button_name = "PAUSE"
+        elif (x, y, width, height) == (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT):
+            button_name = "MODIFY"
+        
+        # Determine button color based on hover and override
+        if override_color:
+            button_color = override_color
+        elif self.hovered_button == button_name and button_name != "SPEED":
+            # Apply hover effect to all buttons except SPEED
+            button_color = BUTTON_HOVER_COLOR
+        else:
+            button_color = BUTTON_COLOR
+        
         # Draw the button rectangle
         button_rect = pygame.Rect(x, y, width, height)
-        button_color = override_color if override_color else BUTTON_COLOR
         pygame.draw.rect(self.screen, button_color, button_rect, border_radius=BUTTON_BORDER_RADIUS)
         
         # Draw the text centered on the button
@@ -472,6 +502,33 @@ class Simulation:
             self.zoom_at_point(mouse_pos, 1)
         elif event.button == 5:  # Scroll down (zoom out)
             self.zoom_at_point(mouse_pos, -1)
+    
+    def update_hovered_button(self, mouse_pos):
+        """Update which button is currently being hovered over"""
+        # Define all button regions
+        button_regions = {
+            "EXIT": (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
+            "INFO": (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
+            "MENU": (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
+        }
+        
+        # Add menu option buttons if menu is open
+        if self.menu_open:
+            button_regions.update({
+                "SPEED": (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT),
+                "SPEED_INPUT": (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT),
+                "PAUSE": (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT),
+                "MODIFY": (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)
+            })
+        
+        # Check if mouse is over any button
+        for button_name, rect in button_regions.items():
+            if self.is_point_in_rect(mouse_pos, rect):
+                self.hovered_button = button_name
+                return
+        
+        # No button is hovered
+        self.hovered_button = None
     
     def run(self):
         # Play the start sound when the simulation begins
