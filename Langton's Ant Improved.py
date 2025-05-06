@@ -1,20 +1,22 @@
-# ✦ LANGTON'S ANT IMPROVED ✦ ------------------------------------------------------------------------
+# ✦ LANGTON'S ANT IMPROVED ✦ --------------------- Calixte Lamotte ----------------------------------
 #-----------------------------------------------------------------------------------------------------
 
-# NOTES ✦ ---------------------------------------------------------------------------------------------
+# NOTES ✦ -------------------------------------------------------------------------------------------
 
 # Info button, settings button, exit button
 # Cliquer des cases pour les colorer
 
-# MODULES ✦ -------------------------------------------------------------------------------------------
+# MODULES ✦ -----------------------------------------------------------------------------------------
 import pygame
 import numpy as np
 import sys
+import os
 
 # Initialize Pygame
 pygame.init()
+pygame.mixer.init()  # Initialize the mixer for audio playback
 
-# CONSTANTS ✦ -----------------------------------------------------------------------------------------
+# CONSTANTS ✦ ---------------------------------------------------------------------------------------
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 GRID_SIZE = 5  # Initial cell size in pixels
@@ -25,6 +27,35 @@ ANT_COLOR = (255, 0, 0)  # Red
 CELL_ON_COLOR = (0, 0, 0)  # Black
 CELL_OFF_COLOR = (255, 255, 255)  # White
 FPS = 60
+
+# Button constants
+BUTTON_WIDTH = 80
+BUTTON_HEIGHT = 30
+BUTTON_MARGIN = 10
+BUTTON_COLOR = (0, 0, 0)  # Black
+BUTTON_TEXT_COLOR = (255, 255, 255)  # White
+BUTTON_FONT_SIZE = 14
+BUTTON_BORDER_RADIUS = 5
+
+# Exit button constants
+EXIT_BUTTON_X = WINDOW_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN
+EXIT_BUTTON_Y = BUTTON_MARGIN
+EXIT_BUTTON_TEXT = "EXIT"
+
+# Info button constants
+INFO_BUTTON_X = WINDOW_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN
+INFO_BUTTON_Y = EXIT_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+INFO_BUTTON_TEXT = "INFO"
+
+# Menu button constants
+MENU_BUTTON_X = WINDOW_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN
+MENU_BUTTON_Y = INFO_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+MENU_BUTTON_TEXT = "MENU"
+
+# Sound files
+START_SOUND = pygame.mixer.Sound(os.path.join("assets", "start.mp3"))
+WHITE_TO_BLACK_SOUND = pygame.mixer.Sound(os.path.join("assets", "2-bell.mp3"))
+BLACK_TO_WHITE_SOUND = pygame.mixer.Sound(os.path.join("assets", "1-bell.mp3"))
 
 # Attribution text constants
 ATTRIBUTION_TEXT = "2025 · @Calixte Lamotte"
@@ -77,10 +108,14 @@ class LangtonAnt:
         # Flip the cell state
         self.grid[self.ant_x, self.ant_y] = 1 - current_cell
         
-        # Turn right on white (0), left on black (1)
+        # Play appropriate sound based on the transition
         if current_cell == 0:
+            # White to black transition
+            WHITE_TO_BLACK_SOUND.play()
             self.direction = (self.direction + 1) % 4  # Turn right (clockwise)
         else:
+            # Black to white transition
+            BLACK_TO_WHITE_SOUND.play()
             self.direction = (self.direction - 1) % 4  # Turn left (counter-clockwise)
         
         # Move forward
@@ -92,7 +127,8 @@ class LangtonAnt:
 
 class Simulation:
     def __init__(self):
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        # Create a borderless window
+        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.NOFRAME)
         pygame.display.set_caption("Langton's Ant Simulation")
         self.clock = pygame.time.Clock()
         
@@ -121,6 +157,7 @@ class Simulation:
         self.attribution_font = pygame.font.SysFont("Arial", 10)
         self.instruction_font = pygame.font.SysFont("Arial", INSTRUCTION_SIZE)
         self.title_font = pygame.font.SysFont("Arial", TITLE_SIZE, bold=True)
+        self.button_font = pygame.font.SysFont("Arial", BUTTON_FONT_SIZE, bold=True)
     
     def handle_events(self):
         for event in pygame.event.get():
@@ -135,9 +172,21 @@ class Simulation:
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
             
-            # Mouse controls for panning (now default with left mouse button)
+            # Mouse controls for buttons and panning
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == pygame.BUTTON_LEFT:
+                mouse_pos = pygame.mouse.get_pos()
+                
+                # Check if any button was clicked
+                if self.is_point_in_rect(mouse_pos, (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
+                    # Exit button clicked
+                    self.running = False
+                elif self.is_point_in_rect(mouse_pos, (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
+                    # Info button clicked - no functionality yet
+                    pass
+                elif self.is_point_in_rect(mouse_pos, (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
+                    # Menu button clicked - no functionality yet
+                    pass
+                elif event.button == pygame.BUTTON_LEFT:
                     self.panning = True
                     self.last_mouse_pos = event.pos
                     # Change cursor to closed/grabbing hand when panning
@@ -162,7 +211,13 @@ class Simulation:
                     self.offset_x += dx
                     self.offset_y += dy
                     self.last_mouse_pos = event.pos
-
+    
+    def is_point_in_rect(self, point, rect):
+        """Check if a point is inside a rectangle defined by (x, y, width, height)"""
+        x, y = point
+        rect_x, rect_y, rect_width, rect_height = rect
+        return rect_x <= x <= rect_x + rect_width and rect_y <= y <= rect_y + rect_height
+    
     def zoom_at_point(self, pos, zoom_change):
         """Zoom in or out centered on the cursor position"""
         # Get mouse position before zoom
@@ -247,9 +302,28 @@ class Simulation:
         attribution_rect = attribution_surface.get_rect(center=(ATTRIBUTION_X, ATTRIBUTION_Y))
         self.screen.blit(attribution_surface, attribution_rect)
         
+        # Draw buttons
+        self.draw_button(EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, EXIT_BUTTON_TEXT)
+        self.draw_button(INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, INFO_BUTTON_TEXT) 
+        self.draw_button(MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, MENU_BUTTON_TEXT)
+        
         pygame.display.flip()
     
+    def draw_button(self, x, y, width, height, text):
+        """Draw a button with text centered on it"""
+        # Draw the button rectangle
+        button_rect = pygame.Rect(x, y, width, height)
+        pygame.draw.rect(self.screen, BUTTON_COLOR, button_rect, border_radius=BUTTON_BORDER_RADIUS)
+        
+        # Draw the text centered on the button
+        text_surface = self.button_font.render(text, True, BUTTON_TEXT_COLOR)
+        text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
+        self.screen.blit(text_surface, text_rect)
+    
     def run(self):
+        # Play the start sound when the simulation begins
+        START_SOUND.play()
+        
         while self.running:
             self.handle_events()
             self.update()
