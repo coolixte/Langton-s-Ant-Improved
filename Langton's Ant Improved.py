@@ -78,11 +78,12 @@ PLAY_BUTTON_TEXT = "PLAY"
 
 # Modify pixels button
 MODIFY_BUTTON_X = MENU_BUTTON_X + -40
-MODIFY_BUTTON_Y = PAUSE_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN 
+MODIFY_BUTTON_Y = PAUSE_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 MODIFY_BUTTON_WIDTH = BUTTON_WIDTH + 40
 MODIFY_BUTTON_HEIGHT = BUTTON_HEIGHT
 MODIFY_BUTTON_TEXT = "MODIFY PIXELS"
 MODIFY_MODE = False  # Track if in modify mode
+MODIFY_HIGHLIGHT_COLOR = (170, 0, 170)  # Mauve color for highlighting
 
 # Sound files
 START_SOUND = pygame.mixer.Sound(os.path.join("assets", "start.mp3"))
@@ -99,7 +100,6 @@ TITLE_TEXT = "LANGTON'S ANT IMPROVED"
 TITLE_X = WINDOW_WIDTH // 2  # Centered horizontally
 TITLE_Y = 25  # 30 pixels from top
 TITLE_SIZE = 25  # Font size
-TITLE_FONT = "Lobster"  # Fancy font for title
 
 # Instruction text constants
 INSTRUCTION_TEXT = "ZOOM / PAN AVEC LA SOURIS"
@@ -174,6 +174,7 @@ class Simulation:
         # Mouse state
         self.panning = False
         self.last_mouse_pos = (0, 0)
+        self.hovered_cell = (-1, -1)  # Track cell currently being hovered over
         
         # Simulation state
         self.running = True
@@ -234,7 +235,7 @@ class Simulation:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 
-                # Check if any button was clicked
+                # First check for button clicks
                 if self.is_point_in_rect(mouse_pos, (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
                     # Exit button clicked
                     self.running = False
@@ -244,9 +245,8 @@ class Simulation:
                 elif self.is_point_in_rect(mouse_pos, (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
                     # Menu button clicked - toggle menu
                     self.menu_open = not self.menu_open
-                
-                # Only check for menu option clicks if menu is open
                 elif self.menu_open:
+                    # Check menu option buttons only if menu is open
                     if self.is_point_in_rect(mouse_pos, (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT)):
                         # Speed button clicked - no functionality other than highlighting input field
                         pass
@@ -262,58 +262,13 @@ class Simulation:
                     elif self.is_point_in_rect(mouse_pos, (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)):
                         # Toggle modify mode
                         self.modify_mode = not self.modify_mode
-                
-                # Handle pixel modification when in modify mode
-                elif self.modify_mode and event.button == pygame.BUTTON_LEFT:
-                    # Convert screen coordinates to grid coordinates
-                    grid_x = int((mouse_pos[0] - self.offset_x) / self.zoom)
-                    grid_y = int((mouse_pos[1] - self.offset_y) / self.zoom)
-                    
-                    # Check if within grid bounds
-                    if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
-                        # Toggle cell state
-                        current_cell = self.ant.grid[grid_x, grid_y]
-                        self.ant.grid[grid_x, grid_y] = 1 - current_cell
-                        
-                        # Play appropriate sound based on the transition
-                        if current_cell == 0:
-                            # White to black transition
-                            WHITE_TO_BLACK_SOUND.play()
-                        else:
-                            # Black to white transition
-                            BLACK_TO_WHITE_SOUND.play()
-                
-                # Handle panning if not clicking on any buttons or in modify mode
-                elif not self.modify_mode and event.button == pygame.BUTTON_LEFT:
-                    # Only start panning if not on a button
-                    button_regions = [
-                        (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
-                        (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
-                        (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)
-                    ]
-                    
-                    if self.menu_open:
-                        # Add menu option regions
-                        button_regions.extend([
-                            (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT),
-                            (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT),
-                            (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT),
-                            (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)
-                        ])
-                    
-                    is_on_button = any(self.is_point_in_rect(mouse_pos, rect) for rect in button_regions)
-                    
-                    if not is_on_button:
-                        self.panning = True
-                        self.last_mouse_pos = mouse_pos
-                        # Change cursor to closed/grabbing hand when panning
-                        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_SIZEALL)
-                
-                # Zoom with scroll wheel centered on cursor position
-                elif event.button == 4:  # Scroll up (zoom in)
-                    self.zoom_at_point(event.pos, 1)
-                elif event.button == 5:  # Scroll down (zoom out)
-                    self.zoom_at_point(event.pos, -1)
+                    # If none of the menu buttons were clicked, continue to other checks
+                    else:
+                        # Handle other mouse actions
+                        self.handle_other_mouse_actions(event, mouse_pos)
+                else:
+                    # If not clicking on any buttons, handle other mouse actions
+                    self.handle_other_mouse_actions(event, mouse_pos)
             
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == pygame.BUTTON_LEFT:
@@ -322,12 +277,29 @@ class Simulation:
                     pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
             
             elif event.type == pygame.MOUSEMOTION:
+                mouse_pos = pygame.mouse.get_pos()
+                
+                # Update hovered cell
+                if self.modify_mode:
+                    # Convert screen coordinates to grid coordinates
+                    grid_x = int((mouse_pos[0] - self.offset_x) / self.zoom)
+                    grid_y = int((mouse_pos[1] - self.offset_y) / self.zoom)
+                    
+                    # Check if within grid bounds
+                    if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
+                        self.hovered_cell = (grid_x, grid_y)
+                    else:
+                        self.hovered_cell = (-1, -1)
+                else:
+                    # Reset hovered cell when not in modify mode
+                    self.hovered_cell = (-1, -1)
+                
                 if self.panning:
-                    dx = event.pos[0] - self.last_mouse_pos[0]
-                    dy = event.pos[1] - self.last_mouse_pos[1]
+                    dx = mouse_pos[0] - self.last_mouse_pos[0]
+                    dy = mouse_pos[1] - self.last_mouse_pos[1]
                     self.offset_x += dx
                     self.offset_y += dy
-                    self.last_mouse_pos = event.pos
+                    self.last_mouse_pos = mouse_pos
     
     def is_point_in_rect(self, point, rect):
         """Check if a point is inside a rectangle defined by (x, y, width, height)"""
@@ -374,16 +346,23 @@ class Simulation:
         # Draw grid cells with rounded corners
         for x in range(visible_start_x, visible_end_x):
             for y in range(visible_start_y, visible_end_y):
-                if self.ant.grid[x, y] == 1:  # Only draw colored cells (black ones)
-                    cell_rect = pygame.Rect(
-                        int(self.offset_x + x * self.zoom), 
-                        int(self.offset_y + y * self.zoom), 
-                        int(self.zoom), 
-                        int(self.zoom)
-                    )
-                    
-                    # Draw rounded rectangle
-                    radius = max(1, min(int(self.zoom * 0.3), 10))  # Scale radius with zoom, but cap it
+                # Create cell rectangle
+                cell_rect = pygame.Rect(
+                    int(self.offset_x + x * self.zoom), 
+                    int(self.offset_y + y * self.zoom), 
+                    int(self.zoom), 
+                    int(self.zoom)
+                )
+                
+                # Set radius for rounded corners
+                radius = max(1, min(int(self.zoom * 0.3), 10))  # Scale radius with zoom, but cap it
+                
+                # Determine cell color based on state and hover
+                if self.modify_mode and self.hovered_cell == (x, y):
+                    # Draw hovered cell with highlight color
+                    pygame.draw.rect(self.screen, MODIFY_HIGHLIGHT_COLOR, cell_rect, border_radius=radius)
+                elif self.ant.grid[x, y] == 1:
+                    # Draw black cell
                     pygame.draw.rect(self.screen, CELL_ON_COLOR, cell_rect, border_radius=radius)
         
         # Draw the ant as a rounded red square
@@ -444,7 +423,7 @@ class Simulation:
             self.draw_button(PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT, pause_text)
             
             # Draw modify pixels button with highlight if active
-            modify_color = (100, 0, 0) if self.modify_mode else BUTTON_COLOR
+            modify_color = MODIFY_HIGHLIGHT_COLOR if self.modify_mode else BUTTON_COLOR
             self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
                             MODIFY_BUTTON_TEXT, override_color=modify_color)
         
@@ -461,6 +440,38 @@ class Simulation:
         text_surface = self.button_font.render(text, True, BUTTON_TEXT_COLOR)
         text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
         self.screen.blit(text_surface, text_rect)
+    
+    def handle_other_mouse_actions(self, event, mouse_pos):
+        """Handle mouse actions that are not button clicks (panning, zooming, pixel modification)"""
+        # Handle pixel modification when in modify mode
+        if self.modify_mode and event.button == pygame.BUTTON_LEFT:
+            # Check if within grid bounds
+            grid_x, grid_y = self.hovered_cell
+            if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
+                # Toggle cell state
+                current_cell = self.ant.grid[grid_x, grid_y]
+                self.ant.grid[grid_x, grid_y] = 1 - current_cell
+                
+                # Play appropriate sound based on the transition
+                if current_cell == 0:
+                    # White to black transition
+                    WHITE_TO_BLACK_SOUND.play()
+                else:
+                    # Black to white transition
+                    BLACK_TO_WHITE_SOUND.play()
+        
+        # Handle panning with left mouse button (only when not in modify mode)
+        elif not self.modify_mode and event.button == pygame.BUTTON_LEFT:
+            self.panning = True
+            self.last_mouse_pos = mouse_pos
+            # Change cursor to closed/grabbing hand when panning
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_SIZEALL)
+        
+        # Zoom with scroll wheel centered on cursor position - allow in any mode
+        elif event.button == 4:  # Scroll up (zoom in)
+            self.zoom_at_point(mouse_pos, 1)
+        elif event.button == 5:  # Scroll down (zoom out)
+            self.zoom_at_point(mouse_pos, -1)
     
     def run(self):
         # Play the start sound when the simulation begins
