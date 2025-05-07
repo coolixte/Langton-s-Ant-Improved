@@ -1,4 +1,4 @@
-# ✦ LANGTON'S ANT IMPROVED ✦ --------------------- Calixte Lamotte ----------------------------------
+# ✦ FOURMI DE LANGTON AMÉLIORÉE ✦ --------------------- Calixte Lamotte -----------------------------
 #-----------------------------------------------------------------------------------------------------
 
 
@@ -10,59 +10,58 @@ import sys
 import os
 import webbrowser
 
-# Initialize Pygame
+# Initialisation de Pygame
 pygame.init()
-pygame.mixer.init()  # Initialize the mixer for audio playback
+pygame.mixer.init()  # Initialisation du mixeur pour la lecture audio
 
 
-# CONSTANTS ✦ ---------------------------------------------------------------------------------------
+# CONSTANTES ✦ --------------------------------------------------------------------------------------
 
 # Général
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
-GRID_SIZE = 5  # Initial cell size in pixels
-GRID_WIDTH = 200  # Number of cells in the grid width
-GRID_HEIGHT = 200  # Number of cells in  the grid height
-BG_COLOR = (255, 255, 255)  # White
-ANT_COLOR = (255, 0, 0)  # Red
-CELL_ON_COLOR = (0, 0, 0)  # Black
-CELL_OFF_COLOR = (255, 255, 255)  # White
+GRID_SIZE = 5  # Taille initiale d'une cellule en pixels
+GRID_WIDTH = 200  # Nombre de cellules dans la largeur de la grille
+GRID_HEIGHT = 200  # Nombre de cellules dans la hauteur de la grille
+BG_COLOR = (255, 255, 255)  # Blanc
+ANT_COLOR = (255, 0, 0)  # Rouge
+CELL_ON_COLOR = (0, 0, 0)  # Noir
 FPS = 60
 
-# Button constants
+# Constantes des boutons
 BUTTON_WIDTH = 80
 BUTTON_HEIGHT = 30
 BUTTON_MARGIN = 10
-BUTTON_COLOR = (0, 0, 0)  # Black
-BUTTON_HOVER_COLOR = (100, 100, 100)  # Light grey
-BUTTON_TEXT_COLOR = (255, 255, 255)  # White
+BUTTON_COLOR = (0, 0, 0)  # Noir
+BUTTON_HOVER_COLOR = (100, 100, 100)  # Gris clair
+BUTTON_TEXT_COLOR = (255, 255, 255)  # Blanc
 BUTTON_FONT_SIZE = 14
 BUTTON_BORDER_RADIUS = 5
 
-# Exit button constants
+# Constantes du bouton de sortie
 EXIT_BUTTON_X = WINDOW_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN
 EXIT_BUTTON_Y = BUTTON_MARGIN
 EXIT_BUTTON_TEXT = "EXIT"
 
-# Info button constants
+# Constantes du bouton d'information
 INFO_BUTTON_X = WINDOW_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN
 INFO_BUTTON_Y = EXIT_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 INFO_BUTTON_TEXT = "INFO"
 
-# Menu button constants
+# Constantes du bouton de menu
 MENU_BUTTON_X = WINDOW_WIDTH - BUTTON_WIDTH - BUTTON_MARGIN
 MENU_BUTTON_Y = INFO_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 MENU_BUTTON_TEXT = "MENU"
 
-# Menu options constants
-MENU_OPEN = False  # Track if menu is open
+# Constantes des options du menu
+MENU_OPEN = False  # Suivi de l'état d'ouverture du menu
 SPEED_BUTTON_X = MENU_BUTTON_X + -95
 SPEED_BUTTON_Y = MENU_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 SPEED_BUTTON_WIDTH = 120
 SPEED_BUTTON_HEIGHT = BUTTON_HEIGHT
-SPEED_BUTTON_TEXT = "SPEED"
+SPEED_BUTTON_TEXT = "VITESSE"
 
-# Speed input field
+# Champ de saisie de vitesse
 SPEED_INPUT_X = SPEED_BUTTON_X + SPEED_BUTTON_WIDTH + 5
 SPEED_INPUT_Y = SPEED_BUTTON_Y
 SPEED_INPUT_WIDTH = 50
@@ -70,7 +69,7 @@ SPEED_INPUT_HEIGHT = BUTTON_HEIGHT
 SPEED_INPUT_ACTIVE = False
 SPEED_INPUT_TEXT = "1"
 
-# Pause/Play button
+# Bouton Pause/Lecture
 PAUSE_BUTTON_X = MENU_BUTTON_X
 PAUSE_BUTTON_Y = SPEED_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 PAUSE_BUTTON_WIDTH = BUTTON_WIDTH
@@ -78,113 +77,113 @@ PAUSE_BUTTON_HEIGHT = BUTTON_HEIGHT
 PAUSE_BUTTON_TEXT = "PAUSE"
 PLAY_BUTTON_TEXT = "PLAY"
 
-# Modify pixels button
+# Bouton de modification des pixels
 MODIFY_BUTTON_X = MENU_BUTTON_X + -40
 MODIFY_BUTTON_Y = PAUSE_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 MODIFY_BUTTON_WIDTH = BUTTON_WIDTH + 40
 MODIFY_BUTTON_HEIGHT = BUTTON_HEIGHT
 MODIFY_BUTTON_TEXT = "MODIFY PIXELS"
-MODIFY_MODE = False  # Track if in modify mode
-MODIFY_HIGHLIGHT_COLOR = (170, 0, 170)  # Mauve color for highlighting
+MODIFY_MODE = False  # Suivi du mode de modification
+MODIFY_HIGHLIGHT_COLOR = (170, 0, 170)  # Couleur mauve pour le surlignage
 
-# Reset button
+# Bouton de réinitialisation
 RESET_BUTTON_X = MENU_BUTTON_X
 RESET_BUTTON_Y = MODIFY_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
 RESET_BUTTON_WIDTH = BUTTON_WIDTH
 RESET_BUTTON_HEIGHT = BUTTON_HEIGHT
 RESET_BUTTON_TEXT = "RESET"
 
-# Info screen constants
-INFO_MODE = False  # Track if info screen is displayed
+# Constantes de l'écran d'information
+INFO_MODE = False  # Suivi de l'affichage de l'écran d'information
 INFO_IMAGE_PATH = os.path.join("assets", "Info.png")
-INFO_IMAGE_WIDTH = 500  # Width of info image
-INFO_IMAGE_HEIGHT = 500  # Height of info image
-INFO_IMAGE_X = WINDOW_WIDTH // 2 - INFO_IMAGE_WIDTH // 2  # Centered horizontally
-INFO_IMAGE_Y = WINDOW_HEIGHT // 2 - INFO_IMAGE_HEIGHT // 2  # Centered vertically
+INFO_IMAGE_WIDTH = 500  # Largeur de l'image d'information
+INFO_IMAGE_HEIGHT = 500  # Hauteur de l'image d'information
+INFO_IMAGE_X = WINDOW_WIDTH // 2 - INFO_IMAGE_WIDTH // 2  # Centré horizontalement
+INFO_IMAGE_Y = WINDOW_HEIGHT // 2 - INFO_IMAGE_HEIGHT // 2  # Centré verticalement
 
-# Video link button constants
+# Constantes du bouton de lien vidéo
 VIDEO_BUTTON_WIDTH = 120
 VIDEO_BUTTON_HEIGHT = 40
-VIDEO_BUTTON_X = WINDOW_WIDTH // 2 - VIDEO_BUTTON_WIDTH // 2 + 100 # Centered horizontally
-VIDEO_BUTTON_Y = INFO_IMAGE_Y + INFO_IMAGE_HEIGHT + -130  # Below info image
+VIDEO_BUTTON_X = WINDOW_WIDTH // 2 - VIDEO_BUTTON_WIDTH // 2 + 100 # Centré horizontalement
+VIDEO_BUTTON_Y = INFO_IMAGE_Y + INFO_IMAGE_HEIGHT + -130  # En dessous de l'image d'information
 VIDEO_BUTTON_TEXT = "LIEN VIDEO"
 VIDEO_URL = "https://youtu.be/qZRYGxF6D3w?si=XcB8ibW5AP98eqRa"
 
-# Sound files
+# Fichiers sonores
 START_SOUND = pygame.mixer.Sound(os.path.join("assets", "start.mp3"))
 WHITE_TO_BLACK_SOUND = pygame.mixer.Sound(os.path.join("assets", "2-bell.mp3"))
 BLACK_TO_WHITE_SOUND = pygame.mixer.Sound(os.path.join("assets", "1-bell.mp3"))
 
-# Attribution text constants
+# Constantes du texte d'attribution
 ATTRIBUTION_TEXT = "2025 · @Calixte Lamotte"
-ATTRIBUTION_X = WINDOW_WIDTH // 2  # Centered horizontally
-ATTRIBUTION_Y = WINDOW_HEIGHT - 15  # 15 pixels from bottom
+ATTRIBUTION_X = WINDOW_WIDTH // 2  # Centré horizontalement
+ATTRIBUTION_Y = WINDOW_HEIGHT - 15  # 15 pixels du bas
 
-# Steps counter button constants
+# Constantes du bouton compteur de pas
 STEPS_BUTTON_WIDTH = BUTTON_WIDTH + 40
-STEPS_BUTTON_X = WINDOW_WIDTH // 2 - STEPS_BUTTON_WIDTH // 2  # Centered using button's own width
-STEPS_BUTTON_Y = ATTRIBUTION_Y - BUTTON_HEIGHT - 10  # Above attribution with 10px margin
+STEPS_BUTTON_X = WINDOW_WIDTH // 2 - STEPS_BUTTON_WIDTH // 2  # Centré en utilisant la largeur du bouton
+STEPS_BUTTON_Y = ATTRIBUTION_Y - BUTTON_HEIGHT - 10  # Au-dessus de l'attribution avec une marge de 10px
 STEPS_BUTTON_HEIGHT = BUTTON_HEIGHT
 
-# Title text constants
-TITLE_TEXT = "LANGTON'S ANT IMPROVED"
-TITLE_X = WINDOW_WIDTH // 2  # Centered horizontally
-TITLE_Y = 25  # 30 pixels from top
-TITLE_SIZE = 25  # Font size
+# Constantes du texte du titre
+TITLE_TEXT = "FOURMI DE LANGTON AMÉLIORÉE"
+TITLE_X = WINDOW_WIDTH // 2  # Centré horizontalement
+TITLE_Y = 25  # 30 pixels du haut
+TITLE_SIZE = 25  # Taille de police
 
-# Instruction text constants
+# Constantes du texte d'instruction
 INSTRUCTION_TEXT = "ZOOM / PAN AVEC LA SOURIS"
-INSTRUCTION_X = WINDOW_WIDTH // 2  # Centered horizontally
-INSTRUCTION_Y = 50  # Adjusted to be below title
-INSTRUCTION_SIZE = 12  # Font size
+INSTRUCTION_X = WINDOW_WIDTH // 2  # Centré horizontalement
+INSTRUCTION_Y = 50  # Ajusté pour être sous le titre
+INSTRUCTION_SIZE = 12  # Taille de police
 
-# Simulation parameters
-SIMULATION_SPEED = 1  # Steps per frame (now supports fractional values)
+# Paramètres de simulation
+SIMULATION_SPEED = 1  # Pas par image (supporte maintenant les valeurs fractionnaires)
 
 
-# MAIN ✦ ---------------------------------------------------------------------------------------------
+# MAIN ✦ ---------------------------------------------------------------------------------------
 
 class LangtonAnt:
     def __init__(self, grid_width, grid_height):
-        # Initialize grid with all cells off (0)
+        # Initialisation de la grille avec toutes les cellules éteintes (0)
         self.grid = np.zeros((grid_width, grid_height), dtype=int)
         
-        # Place ant in the middle of the grid
+        # Placer la fourmi au milieu de la grille
         self.ant_x = grid_width // 2
         self.ant_y = grid_height // 2
         
-        # Direction: 0=up, 1=right, 2=down, 3=left
+        # Direction: 0=haut, 1=droite, 2=bas, 3=gauche
         self.direction = 0
         
-        # Movement vectors for each direction
+        # Vecteurs de mouvement pour chaque direction
         self.movement = [
-            (0, -1),  # Up
-            (1, 0),   # Right
-            (0, 1),   # Down
-            (-1, 0)   # Left
+            (0, -1),  # Haut
+            (1, 0),   # Droite
+            (0, 1),   # Bas
+            (-1, 0)   # Gauche
         ]
         
         self.steps = 0
     
     def step(self):
-        """Perform one step of the Langton's Ant algorithm"""
-        # Get current cell state
+        """Effectue une étape de l'algorithme de la fourmi de Langton"""
+        # Obtenir l'état actuel de la cellule
         current_cell = self.grid[self.ant_x, self.ant_y]
         
-        # Flip the cell state
+        # Inverser l'état de la cellule
         self.grid[self.ant_x, self.ant_y] = 1 - current_cell
         
-        # Play appropriate sound based on the transition
+        # Jouer le son approprié en fonction de la transition
         if current_cell == 0:
-            # White to black transition
+            # Transition blanc vers noir
             WHITE_TO_BLACK_SOUND.play()
-            self.direction = (self.direction + 1) % 4  # Turn right (clockwise)
+            self.direction = (self.direction + 1) % 4  # Tourner à droite (sens horaire)
         else:
-            # Black to white transition
+            # Transition noir vers blanc
             BLACK_TO_WHITE_SOUND.play()
-            self.direction = (self.direction - 1) % 4  # Turn left (counter-clockwise)
+            self.direction = (self.direction - 1) % 4  # Tourner à gauche (sens anti-horaire)
         
-        # Move forward
+        # Avancer
         dx, dy = self.movement[self.direction]
         self.ant_x = (self.ant_x + dx) % self.grid.shape[0]
         self.ant_y = (self.ant_y + dy) % self.grid.shape[1]
@@ -193,76 +192,76 @@ class LangtonAnt:
 
 class Simulation:
     def __init__(self):
-        # Create a borderless window
+        # Créer une fenêtre sans bordure
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.NOFRAME)
-        pygame.display.set_caption("Langton's Ant Simulation")
+        pygame.display.set_caption("Fourmi de Langton Améliorée")
         self.clock = pygame.time.Clock()
         
         self.ant = LangtonAnt(GRID_WIDTH, GRID_HEIGHT)
         
-        # View parameters
+        # Paramètres de vue
         self.offset_x = WINDOW_WIDTH // 2 - GRID_WIDTH * GRID_SIZE // 2
         self.offset_y = WINDOW_HEIGHT // 2 - GRID_HEIGHT * GRID_SIZE // 2
         self.zoom = GRID_SIZE
         
-        # Mouse state
+        # État de la souris
         self.panning = False
         self.last_mouse_pos = (0, 0)
-        self.hovered_cell = (-1, -1)  # Track cell currently being hovered over
-        self.hovered_button = None  # Track button currently being hovered over
-        self.mouse_button_down = False  # Track if mouse button is being held down
-        self.last_modified_cell = None  # Track the last cell that was modified
+        self.hovered_cell = (-1, -1)  # Suivi de la cellule actuellement survolée
+        self.hovered_button = None  # Suivi du bouton actuellement survolé
+        self.mouse_button_down = False  # Suivi si le bouton de la souris est maintenu enfoncé
+        self.last_modified_cell = None  # Suivi de la dernière cellule modifiée
         
-        # Simulation state
+        # État de la simulation
         self.running = True
         self.paused = False
         
-        # Menu state
+        # État du menu
         self.menu_open = MENU_OPEN
         self.speed_input_active = SPEED_INPUT_ACTIVE
         self.speed_input_text = SPEED_INPUT_TEXT
         self.modify_mode = MODIFY_MODE
-        self.modify_cooldown = 0  # Cooldown timer for modify mode
+        self.modify_cooldown = 0  # Minuteur de délai pour le mode de modification
         
-        # Info state
+        # État de l'info
         self.info_mode = INFO_MODE
-        # Load the info image
+        # Charger l'image d'information
         try:
             self.info_image = pygame.image.load(INFO_IMAGE_PATH)
             self.info_image = pygame.transform.scale(self.info_image, (INFO_IMAGE_WIDTH, INFO_IMAGE_HEIGHT))
         except pygame.error:
-            # Create a placeholder if image can't be loaded
+            # Créer un espace réservé si l'image ne peut pas être chargée
             self.info_image = pygame.Surface((INFO_IMAGE_WIDTH, INFO_IMAGE_HEIGHT))
-            self.info_image.fill((200, 200, 200))  # Light gray background
+            self.info_image.fill((200, 200, 200))  # Fond gris clair
             font = pygame.font.SysFont("Arial", 30)
-            text = font.render("Info Image Not Found", True, (0, 0, 0))
+            text = font.render("Image d'Info Non Trouvée", True, (0, 0, 0))
             text_rect = text.get_rect(center=(INFO_IMAGE_WIDTH//2, INFO_IMAGE_HEIGHT//2))
             self.info_image.blit(text, text_rect)
         
-        # For handling fractional speeds
+        # Pour gérer les vitesses fractionnaires
         self.step_accumulator = 0.0
         
-        # Set default cursor to open hand
+        # Définir le curseur par défaut sur une main ouverte
         pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
         
-        # Prepare fonts
+        # Préparer les polices
         self.attribution_font = pygame.font.SysFont("Arial", 10)
         self.instruction_font = pygame.font.SysFont("Arial", INSTRUCTION_SIZE)
         self.title_font = pygame.font.SysFont("Arial", TITLE_SIZE, bold=True)
         self.button_font = pygame.font.SysFont("Arial", BUTTON_FONT_SIZE, bold=True)
     
     def modify_cell(self, grid_x, grid_y):
-        """Helper function to modify a cell and play the appropriate sound"""
+        """Fonction d'aide pour modifier une cellule et jouer le son approprié"""
         if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
             current_cell = self.ant.grid[grid_x, grid_y]
             self.ant.grid[grid_x, grid_y] = 1 - current_cell
             
-            # Play appropriate sound based on the transition
+            # Jouer le son approprié en fonction de la transition
             if current_cell == 0:
-                # White to black transition
+                # Transition blanc vers noir
                 WHITE_TO_BLACK_SOUND.play()
             else:
-                # Black to white transition
+                # Transition noir vers blanc
                 BLACK_TO_WHITE_SOUND.play()
             
             return True
@@ -277,142 +276,142 @@ class Simulation:
                     self.paused = not self.paused
                 elif event.key == pygame.K_r:
                     self.ant = LangtonAnt(GRID_WIDTH, GRID_HEIGHT)
-                    self.step_accumulator = 0.0  # Reset accumulator on reset
+                    self.step_accumulator = 0.0  # Réinitialiser l'accumulateur lors de la réinitialisation
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
                 
-                # Handle speed input field
+                # Gérer le champ de saisie de vitesse
                 if self.speed_input_active:
                     if event.key == pygame.K_RETURN:
-                        # Submit speed value
+                        # Soumettre la valeur de vitesse
                         try:
                             new_speed = float(self.speed_input_text)
                             if new_speed > 0:
                                 global SIMULATION_SPEED
                                 SIMULATION_SPEED = new_speed
                         except ValueError:
-                            # Invalid input, reset to current speed
+                            # Entrée invalide, réinitialiser à la vitesse actuelle
                             self.speed_input_text = str(SIMULATION_SPEED)
                         self.speed_input_active = False
                     elif event.key == pygame.K_BACKSPACE:
                         self.speed_input_text = self.speed_input_text[:-1]
                     else:
-                        # Only add digit characters and decimal point
+                        # N'ajouter que des chiffres et le point décimal
                         if event.unicode.isdigit() or event.unicode == '.':
                             self.speed_input_text += event.unicode
             
-            # Mouse controls for buttons and panning
+            # Contrôles de souris pour les boutons et le déplacement
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 
-                # Handle mouse wheel events
-                if event.button in (4, 5):  # Mouse wheel up/down
+                # Gérer les événements de la molette de souris
+                if event.button in (4, 5):  # Molette vers le haut/bas
                     self.zoom_at_point(mouse_pos, 1 if event.button == 4 else -1)
-                # Handle left mouse button
+                # Gérer le bouton gauche de la souris
                 elif event.button == pygame.BUTTON_LEFT:
-                    self.mouse_button_down = True  # Set mouse button state to down
-                    self.last_modified_cell = None  # Reset last modified cell
+                    self.mouse_button_down = True  # Définir l'état du bouton de la souris comme enfoncé
+                    self.last_modified_cell = None  # Réinitialiser la dernière cellule modifiée
                     
-                    # First check for button clicks
+                    # Vérifier d'abord les clics sur les boutons
                     if self.is_point_in_rect(mouse_pos, (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
-                        # Exit button clicked
+                        # Bouton de sortie cliqué
                         self.running = False
                     elif self.is_point_in_rect(mouse_pos, (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
-                        # Info button clicked - show info screen
+                        # Bouton d'info cliqué - afficher l'écran d'info
                         if self.menu_open:
-                            self.menu_open = False  # Close the menu
-                        self.info_mode = not self.info_mode  # Toggle info mode
+                            self.menu_open = False  # Fermer le menu
+                        self.info_mode = not self.info_mode  # Basculer le mode info
                     elif self.info_mode and self.is_point_in_rect(mouse_pos, (VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT)):
-                        # Video button clicked - open URL
+                        # Bouton vidéo cliqué - ouvrir l'URL
                         webbrowser.open(VIDEO_URL)
                     elif self.is_point_in_rect(mouse_pos, (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
-                        # Menu button clicked - toggle menu
+                        # Bouton menu cliqué - basculer le menu
                         self.menu_open = not self.menu_open
                     elif self.menu_open:
-                        # Check menu option buttons only if menu is open
+                        # Vérifier les boutons d'options du menu uniquement si le menu est ouvert
                         if self.is_point_in_rect(mouse_pos, (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT)):
-                            # Speed button clicked - no functionality other than highlighting input field
+                            # Bouton de vitesse cliqué - pas de fonctionnalité autre que la mise en évidence du champ de saisie
                             pass
                         elif self.is_point_in_rect(mouse_pos, (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT)):
-                            # Speed input field clicked
+                            # Champ de saisie de vitesse cliqué
                             self.speed_input_active = True
-                            # Reset input text if it's the default value
+                            # Réinitialiser le texte de saisie s'il s'agit de la valeur par défaut
                             if self.speed_input_text == "1" and SIMULATION_SPEED != 1:
                                 self.speed_input_text = str(SIMULATION_SPEED)
                         elif self.is_point_in_rect(mouse_pos, (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT)):
-                            # Pause/Play button clicked
+                            # Bouton Pause/Lecture cliqué
                             self.paused = not self.paused
                         elif self.is_point_in_rect(mouse_pos, (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)):
-                            # Toggle modify mode and set cooldown
+                            # Basculer le mode de modification et définir le délai
                             self.modify_mode = not self.modify_mode
-                            self.modify_cooldown = 10  # Set cooldown to 10 frames (about 1/6 of a second)
+                            self.modify_cooldown = 10  # Définir le délai à 10 images (environ 1/6 de seconde)
                         elif self.is_point_in_rect(mouse_pos, (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)):
-                            # Reset button clicked
+                            # Bouton de réinitialisation cliqué
                             self.ant = LangtonAnt(GRID_WIDTH, GRID_HEIGHT)
-                            self.step_accumulator = 0.0  # Reset accumulator on reset
-                        # If none of the menu buttons were clicked, continue to other checks
+                            self.step_accumulator = 0.0  # Réinitialiser l'accumulateur lors de la réinitialisation
+                        # Si aucun des boutons du menu n'a été cliqué, continuer avec d'autres vérifications
                         else:
-                            # Handle other mouse actions
+                            # Gérer d'autres actions de la souris
                             self.handle_other_mouse_actions(event, mouse_pos)
                     else:
-                        # If not clicking on any buttons, handle other mouse actions
+                        # Si aucun bouton n'est cliqué, gérer d'autres actions de la souris
                         self.handle_other_mouse_actions(event, mouse_pos)
             
             elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == pygame.BUTTON_LEFT:  # Only handle left mouse button
+                if event.button == pygame.BUTTON_LEFT:  # Ne gérer que le bouton gauche de la souris
                     self.panning = False
-                    self.mouse_button_down = False  # Set mouse button state to up
-                    self.last_modified_cell = None  # Reset last modified cell
-                    # Change cursor back to open hand when not panning
+                    self.mouse_button_down = False  # Définir l'état du bouton de la souris comme relâché
+                    self.last_modified_cell = None  # Réinitialiser la dernière cellule modifiée
+                    # Changer le curseur en main ouverte lorsqu'il n'y a pas de déplacement
                     pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
             
             elif event.type == pygame.MOUSEMOTION:
                 mouse_pos = pygame.mouse.get_pos()
                 
-                # Update hovered cell
+                # Mettre à jour la cellule survolée
                 if self.modify_mode:
-                    # Convert screen coordinates to grid coordinates
+                    # Convertir les coordonnées de l'écran en coordonnées de grille
                     grid_x = int((mouse_pos[0] - self.offset_x) / self.zoom)
                     grid_y = int((mouse_pos[1] - self.offset_y) / self.zoom)
                     
-                    # Check if within grid bounds
+                    # Vérifier si c'est dans les limites de la grille
                     if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
                         self.hovered_cell = (grid_x, grid_y)
                         
-                        # If mouse button is down, handle continuous modification
+                        # Si le bouton de la souris est enfoncé, gérer la modification continue
                         if self.mouse_button_down and self.modify_cooldown <= 0:
                             current_cell = (grid_x, grid_y)
                             
-                            # If this is a new cell and not the last modified one
+                            # Si c'est une nouvelle cellule et pas la dernière modifiée
                             if current_cell != self.last_modified_cell:
-                                # Modify the current cell
+                                # Modifier la cellule actuelle
                                 if self.modify_cell(grid_x, grid_y):
                                     self.last_modified_cell = current_cell
                                     
-                                    # If we have a last modified cell, interpolate between positions
+                                    # Si nous avons une dernière cellule modifiée, interpoler entre les positions
                                     if self.last_modified_cell is not None:
                                         last_x, last_y = self.last_modified_cell
-                                        # Calculate the distance between cells
+                                        # Calculer la distance entre les cellules
                                         dx = grid_x - last_x
                                         dy = grid_y - last_y
                                         
-                                        # If the distance is greater than 1, interpolate
+                                        # Si la distance est supérieure à 1, interpoler
                                         if abs(dx) > 1 or abs(dy) > 1:
-                                            # Calculate the number of steps needed
+                                            # Calculer le nombre d'étapes nécessaires
                                             steps = max(abs(dx), abs(dy))
                                             for i in range(1, steps):
-                                                # Calculate intermediate position
+                                                # Calculer la position intermédiaire
                                                 inter_x = last_x + (dx * i) // steps
                                                 inter_y = last_y + (dy * i) // steps
-                                                # Modify the intermediate cell
+                                                # Modifier la cellule intermédiaire
                                                 self.modify_cell(inter_x, inter_y)
                     else:
                         self.hovered_cell = (-1, -1)
                 else:
-                    # Reset hovered cell when not in modify mode
+                    # Réinitialiser la cellule survolée lorsqu'il n'est pas en mode de modification
                     self.hovered_cell = (-1, -1)
                 
-                # Update hovered button state
+                # Mettre à jour l'état du bouton survolé
                 self.update_hovered_button(mouse_pos)
                 
                 if self.panning:
@@ -423,55 +422,55 @@ class Simulation:
                     self.last_mouse_pos = mouse_pos
     
     def is_point_in_rect(self, point, rect):
-        """Check if a point is inside a rectangle defined by (x, y, width, height)"""
+        """Vérifie si un point est à l'intérieur d'un rectangle défini par (x, y, largeur, hauteur)"""
         x, y = point
         rect_x, rect_y, rect_width, rect_height = rect
         return rect_x <= x <= rect_x + rect_width and rect_y <= y <= rect_y + rect_height
     
     def zoom_at_point(self, pos, zoom_change):
-        """Zoom in or out centered on the cursor position"""
-        # Get mouse position before zoom
+        """Zoomer ou dézoomer centré sur la position du curseur"""
+        # Obtenir la position de la souris avant le zoom
         mouse_x, mouse_y = pos
         
-        # Convert screen coordinates to grid coordinates
+        # Convertir les coordonnées de l'écran en coordonnées de grille
         grid_x = (mouse_x - self.offset_x) / self.zoom
         grid_y = (mouse_y - self.offset_y) / self.zoom
         
-        # Apply zoom change
+        # Appliquer le changement de zoom
         old_zoom = self.zoom
         self.zoom = max(1, min(50, self.zoom + zoom_change))
         
-        # Calculate new offset to keep the point under cursor at the same place
+        # Calculer le nouveau décalage pour garder le point sous le curseur au même endroit
         self.offset_x = int(mouse_x - grid_x * self.zoom)
         self.offset_y = int(mouse_y - grid_y * self.zoom)
     
     def update(self):
         if not self.paused:
-            # Accumulate steps based on simulation speed
+            # Accumuler les pas en fonction de la vitesse de simulation
             self.step_accumulator += SIMULATION_SPEED
             
-            # Take whole steps when the accumulator reaches or exceeds 1.0
+            # Effectuer des pas entiers lorsque l'accumulateur atteint ou dépasse 1.0
             while self.step_accumulator >= 1.0:
                 self.ant.step()
                 self.step_accumulator -= 1.0
         
-        # Update modify mode cooldown
+        # Mettre à jour le délai du mode de modification
         if self.modify_cooldown > 0:
             self.modify_cooldown -= 1
     
     def render(self):
         self.screen.fill(BG_COLOR)
         
-        # Calculate visible portion of the grid
+        # Calculer la partie visible de la grille
         visible_start_x = max(0, int(-self.offset_x // self.zoom))
         visible_end_x = min(GRID_WIDTH, int(visible_start_x + (WINDOW_WIDTH // self.zoom) + 2))
         visible_start_y = max(0, int(-self.offset_y // self.zoom))
         visible_end_y = min(GRID_HEIGHT, int(visible_start_y + (WINDOW_HEIGHT // self.zoom) + 2))
         
-        # Draw grid cells with rounded corners
+        # Dessiner les cellules de la grille avec des coins arrondis
         for x in range(visible_start_x, visible_end_x):
             for y in range(visible_start_y, visible_end_y):
-                # Create cell rectangle
+                # Créer le rectangle de la cellule
                 cell_rect = pygame.Rect(
                     int(self.offset_x + x * self.zoom), 
                     int(self.offset_y + y * self.zoom), 
@@ -479,24 +478,24 @@ class Simulation:
                     int(self.zoom)
                 )
                 
-                # Set radius for rounded corners
-                radius = max(1, min(int(self.zoom * 0.3), 10))  # Scale radius with zoom, but cap it
+                # Définir le rayon pour les coins arrondis
+                radius = max(1, min(int(self.zoom * 0.3), 10))  # Mettre à l'échelle le rayon avec le zoom, mais le plafonner
                 
-                # Determine cell color based on state and hover
+                # Déterminer la couleur de la cellule en fonction de l'état et du survol
                 if self.modify_mode and self.hovered_cell == (x, y):
-                    # Draw hovered cell with highlight color
+                    # Dessiner la cellule survolée avec la couleur de surbrillance
                     pygame.draw.rect(self.screen, MODIFY_HIGHLIGHT_COLOR, cell_rect, border_radius=radius)
                 elif self.ant.grid[x, y] == 1:
-                    # Draw black cell
+                    # Dessiner la cellule noire
                     pygame.draw.rect(self.screen, CELL_ON_COLOR, cell_rect, border_radius=radius)
         
-        # Draw the ant as a rounded red square
+        # Dessiner la fourmi comme un carré rouge arrondi
         ant_screen_x = int(self.offset_x + self.ant.ant_x * self.zoom)
         ant_screen_y = int(self.offset_y + self.ant.ant_y * self.zoom)
         
-        # Only draw the ant if it's in the visible area
+        # Ne dessiner la fourmi que si elle est dans la zone visible
         if (0 <= ant_screen_x < WINDOW_WIDTH and 0 <= ant_screen_y < WINDOW_HEIGHT):
-            # Create ant rectangle
+            # Créer le rectangle de la fourmi
             ant_rect = pygame.Rect(
                 ant_screen_x,
                 ant_screen_y,
@@ -504,86 +503,86 @@ class Simulation:
                 int(self.zoom)
             )
             
-            # Draw ant with same style as cells but in red
-            radius = max(1, min(int(self.zoom * 0.3), 10))  # Same radius as cells
+            # Dessiner la fourmi avec le même style que les cellules mais en rouge
+            radius = max(1, min(int(self.zoom * 0.3), 10))  # Même rayon que les cellules
             pygame.draw.rect(self.screen, ANT_COLOR, ant_rect, border_radius=radius)
         
-        # Render title text at the top center
+        # Rendre le texte du titre au centre supérieur
         title_surface = self.title_font.render(TITLE_TEXT, True, (0, 0, 0))
         title_rect = title_surface.get_rect(center=(TITLE_X, TITLE_Y))
         self.screen.blit(title_surface, title_rect)
         
-        # Render instruction text at the top center (below title)
+        # Rendre le texte d'instruction au centre supérieur (sous le titre)
         instruction_surface = self.instruction_font.render(INSTRUCTION_TEXT, True, (0, 0, 0))
         instruction_rect = instruction_surface.get_rect(center=(INSTRUCTION_X, INSTRUCTION_Y))
         self.screen.blit(instruction_surface, instruction_rect)
         
-        # Render attribution text at the bottom center
+        # Rendre le texte d'attribution au centre inférieur
         attribution_surface = self.attribution_font.render(ATTRIBUTION_TEXT, True, (0, 0, 0))
         attribution_rect = attribution_surface.get_rect(center=(ATTRIBUTION_X, ATTRIBUTION_Y))
         self.screen.blit(attribution_surface, attribution_rect)
         
-        # Draw steps counter button
+        # Dessiner le bouton compteur de pas
         steps_text = f"PAS: {self.ant.steps}"
         self.draw_button(STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT, steps_text)
         
-        # Draw buttons
+        # Dessiner les boutons
         self.draw_button(EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, EXIT_BUTTON_TEXT)
         self.draw_button(MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, MENU_BUTTON_TEXT)
         
-        # Draw menu options if menu is open
+        # Dessiner les options du menu si le menu est ouvert
         if self.menu_open:
-            # Speed button and input field
+            # Bouton de vitesse et champ de saisie
             self.draw_button(SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT, SPEED_BUTTON_TEXT)
             
-            # Draw speed input field
+            # Dessiner le champ de saisie de vitesse
             input_color = (50, 50, 50) if self.speed_input_active else (100, 100, 100)
             input_rect = pygame.Rect(SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT)
             pygame.draw.rect(self.screen, input_color, input_rect, border_radius=BUTTON_BORDER_RADIUS)
             
-            # Draw input text
+            # Dessiner le texte de saisie
             input_text_surface = self.button_font.render(self.speed_input_text, True, BUTTON_TEXT_COLOR)
             input_text_rect = input_text_surface.get_rect(center=(SPEED_INPUT_X + SPEED_INPUT_WIDTH // 2, SPEED_INPUT_Y + SPEED_INPUT_HEIGHT // 2))
             self.screen.blit(input_text_surface, input_text_rect)
             
-            # Draw pause/play button with appropriate text
+            # Dessiner le bouton pause/lecture avec le texte approprié
             pause_text = PLAY_BUTTON_TEXT if self.paused else PAUSE_BUTTON_TEXT
             self.draw_button(PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT, pause_text)
             
-            # Draw modify pixels button with highlight if active, otherwise allow hover effect
+            # Dessiner le bouton de modification des pixels avec surlignage si actif, sinon permettre l'effet de survol
             if self.modify_mode:
-                # When active, always use the highlight color (no hover effect)
+                # Quand actif, toujours utiliser la couleur de surbrillance (pas d'effet de survol)
                 self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
                                 MODIFY_BUTTON_TEXT, override_color=MODIFY_HIGHLIGHT_COLOR)
             else:
-                # When inactive, don't use override color so hover effect can work
+                # Quand inactif, ne pas utiliser de couleur de remplacement pour que l'effet de survol puisse fonctionner
                 self.draw_button(MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT, 
                                 MODIFY_BUTTON_TEXT)
             
-            # Draw reset button
+            # Dessiner le bouton de réinitialisation
             self.draw_button(RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT, RESET_BUTTON_TEXT)
         
-        # Draw info screen if in info mode
+        # Dessiner l'écran d'information si en mode info
         if self.info_mode:
-            # Draw a semi-transparent black background to darken the main screen
+            # Dessiner un fond noir semi-transparent pour assombrir l'écran principal
             overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 180))  # Black with 70% opacity
+            overlay.fill((0, 0, 0, 180))  # Noir avec 70% d'opacité
             self.screen.blit(overlay, (0, 0))
             
-            # Draw the info image in the center
+            # Dessiner l'image d'information au centre
             self.screen.blit(self.info_image, (INFO_IMAGE_X, INFO_IMAGE_Y))
             
-            # Draw the video link button
+            # Dessiner le bouton de lien vidéo
             self.draw_button(VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT, VIDEO_BUTTON_TEXT)
         
-        # Draw info button last so it's not affected by the overlay
+        # Dessiner le bouton d'info en dernier pour qu'il ne soit pas affecté par la superposition
         self.draw_button(INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, INFO_BUTTON_TEXT)
         
         pygame.display.flip()
     
     def draw_button(self, x, y, width, height, text, override_color=None):
-        """Draw a button with text centered on it"""
-        # Determine button name for hover effect
+        """Dessiner un bouton avec du texte centré dessus"""
+        # Déterminer le nom du bouton pour l'effet de survol
         button_name = None
         if (x, y, width, height) == (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT):
             button_name = "EXIT"
@@ -606,57 +605,60 @@ class Simulation:
         elif (x, y, width, height) == (VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT):
             button_name = "VIDEO"
         
-        # Determine button color based on hover and override
+        # Déterminer la couleur du bouton en fonction du survol et du remplacement
         if override_color:
             button_color = override_color
         elif button_name == "INFO" and self.info_mode:
-            # Use purple color for info button when info mode is active
+            # Utiliser la couleur violette pour le bouton d'info lorsque le mode info est actif
+            button_color = MODIFY_HIGHLIGHT_COLOR
+        elif button_name == "MENU" and self.menu_open:
+            # Utiliser la couleur violette pour le bouton menu lorsque le menu est ouvert
             button_color = MODIFY_HIGHLIGHT_COLOR
         elif self.hovered_button == button_name and button_name != "SPEED" and button_name != "STEPS":
-            # Apply hover effect to all buttons except SPEED and STEPS
+            # Appliquer l'effet de survol à tous les boutons sauf SPEED et STEPS
             button_color = BUTTON_HOVER_COLOR
         else:
             button_color = BUTTON_COLOR
         
-        # Draw the button rectangle
+        # Dessiner le rectangle du bouton
         button_rect = pygame.Rect(x, y, width, height)
         pygame.draw.rect(self.screen, button_color, button_rect, border_radius=BUTTON_BORDER_RADIUS)
         
-        # Draw the text centered on the button
+        # Dessiner le texte centré sur le bouton
         text_surface = self.button_font.render(text, True, BUTTON_TEXT_COLOR)
         text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
         self.screen.blit(text_surface, text_rect)
     
     def handle_other_mouse_actions(self, event, mouse_pos):
-        """Handle mouse actions that are not button clicks (panning, zooming, pixel modification)"""
-        # Handle pixel modification when in modify mode and cooldown is over
+        """Gérer les actions de la souris qui ne sont pas des clics de bouton (déplacement, zoom, modification de pixels)"""
+        # Gérer la modification de pixels lorsqu'en mode de modification et délai terminé
         if self.modify_mode and event.button == pygame.BUTTON_LEFT and self.modify_cooldown <= 0:
-            # Convert screen coordinates to grid coordinates
+            # Convertir les coordonnées de l'écran en coordonnées de grille
             grid_x = int((mouse_pos[0] - self.offset_x) / self.zoom)
             grid_y = int((mouse_pos[1] - self.offset_y) / self.zoom)
             
-            # Check if within grid bounds
+            # Vérifier si c'est dans les limites de la grille
             if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
-                # Modify the initial cell
+                # Modifier la cellule initiale
                 if self.modify_cell(grid_x, grid_y):
                     self.last_modified_cell = (grid_x, grid_y)
         
-        # Handle panning with left mouse button (only when not in modify mode)
+        # Gérer le déplacement avec le bouton gauche de la souris (uniquement lorsque pas en mode de modification)
         elif not self.modify_mode and event.button == pygame.BUTTON_LEFT:
             self.panning = True
             self.last_mouse_pos = mouse_pos
-            # Change cursor to closed/grabbing hand when panning
+            # Changer le curseur en main fermée/saisie lors du déplacement
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_SIZEALL)
         
-        # Zoom with scroll wheel centered on cursor position - allow in any mode
-        elif event.button == 4:  # Scroll up (zoom in)
+        # Zoom avec la molette de la souris centré sur la position du curseur - permettre dans n'importe quel mode
+        elif event.button == 4:  # Molette vers le haut (zoom avant)
             self.zoom_at_point(mouse_pos, 1)
-        elif event.button == 5:  # Scroll down (zoom out)
+        elif event.button == 5:  # Molette vers le bas (zoom arrière)
             self.zoom_at_point(mouse_pos, -1)
     
     def update_hovered_button(self, mouse_pos):
-        """Update which button is currently being hovered over"""
-        # Define all button regions
+        """Mettre à jour quel bouton est actuellement survolé"""
+        # Définir toutes les régions des boutons
         button_regions = {
             "EXIT": (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
             "INFO": (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
@@ -664,11 +666,11 @@ class Simulation:
             "STEPS": (STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT)
         }
         
-        # Add video button if in info mode
+        # Ajouter le bouton vidéo si en mode info
         if self.info_mode:
             button_regions["VIDEO"] = (VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT)
         
-        # Add menu option buttons if menu is open
+        # Ajouter les boutons d'options du menu si le menu est ouvert
         if self.menu_open:
             button_regions.update({
                 "SPEED": (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT),
@@ -678,17 +680,17 @@ class Simulation:
                 "RESET": (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)
             })
         
-        # Check if mouse is over any button
+        # Vérifier si la souris est sur un bouton
         for button_name, rect in button_regions.items():
             if self.is_point_in_rect(mouse_pos, rect):
                 self.hovered_button = button_name
                 return
         
-        # No button is hovered
+        # Aucun bouton n'est survolé
         self.hovered_button = None
     
     def run(self):
-        # Play the start sound when the simulation begins
+        # Jouer le son de démarrage lorsque la simulation commence
         START_SOUND.play()
         
         while self.running:
@@ -700,7 +702,7 @@ class Simulation:
         pygame.quit()
         sys.exit()
 
-# Main entry point
+# Point d'entrée principal
 if __name__ == "__main__":
     simulation = Simulation()
     simulation.run()
