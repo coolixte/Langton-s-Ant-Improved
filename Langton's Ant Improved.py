@@ -1,22 +1,25 @@
 # ✦ LANGTON'S ANT IMPROVED ✦ --------------------- Calixte Lamotte ----------------------------------
 #-----------------------------------------------------------------------------------------------------
 
-# NOTES ✦ -------------------------------------------------------------------------------------------
+# "Pas" display not shadeable like a button
 
-# Info button, settings button, exit button
-# Cliquer des cases pour les colorer
 
 # MODULES ✦ -----------------------------------------------------------------------------------------
+
 import pygame
 import numpy as np
 import sys
 import os
+import webbrowser
 
 # Initialize Pygame
 pygame.init()
 pygame.mixer.init()  # Initialize the mixer for audio playback
 
+
 # CONSTANTS ✦ ---------------------------------------------------------------------------------------
+
+# Général
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 GRID_SIZE = 5  # Initial cell size in pixels
@@ -93,6 +96,22 @@ RESET_BUTTON_WIDTH = BUTTON_WIDTH
 RESET_BUTTON_HEIGHT = BUTTON_HEIGHT
 RESET_BUTTON_TEXT = "RESET"
 
+# Info screen constants
+INFO_MODE = False  # Track if info screen is displayed
+INFO_IMAGE_PATH = os.path.join("assets", "Info.png")
+INFO_IMAGE_WIDTH = 500  # Width of info image
+INFO_IMAGE_HEIGHT = 500  # Height of info image
+INFO_IMAGE_X = WINDOW_WIDTH // 2 - INFO_IMAGE_WIDTH // 2  # Centered horizontally
+INFO_IMAGE_Y = WINDOW_HEIGHT // 2 - INFO_IMAGE_HEIGHT // 2  # Centered vertically
+
+# Video link button constants
+VIDEO_BUTTON_WIDTH = 120
+VIDEO_BUTTON_HEIGHT = 40
+VIDEO_BUTTON_X = WINDOW_WIDTH // 2 - VIDEO_BUTTON_WIDTH // 2 + 100 # Centered horizontally
+VIDEO_BUTTON_Y = INFO_IMAGE_Y + INFO_IMAGE_HEIGHT + -130  # Below info image
+VIDEO_BUTTON_TEXT = "LIEN VIDEO"
+VIDEO_URL = "https://youtu.be/qZRYGxF6D3w?si=XcB8ibW5AP98eqRa"
+
 # Sound files
 START_SOUND = pygame.mixer.Sound(os.path.join("assets", "start.mp3"))
 WHITE_TO_BLACK_SOUND = pygame.mixer.Sound(os.path.join("assets", "2-bell.mp3"))
@@ -123,6 +142,9 @@ INSTRUCTION_SIZE = 12  # Font size
 
 # Simulation parameters
 SIMULATION_SPEED = 1  # Steps per frame (now supports fractional values)
+
+
+# MAIN ✦ ---------------------------------------------------------------------------------------------
 
 class LangtonAnt:
     def __init__(self, grid_width, grid_height):
@@ -190,6 +212,8 @@ class Simulation:
         self.last_mouse_pos = (0, 0)
         self.hovered_cell = (-1, -1)  # Track cell currently being hovered over
         self.hovered_button = None  # Track button currently being hovered over
+        self.mouse_button_down = False  # Track if mouse button is being held down
+        self.last_modified_cell = None  # Track the last cell that was modified
         
         # Simulation state
         self.running = True
@@ -200,6 +224,22 @@ class Simulation:
         self.speed_input_active = SPEED_INPUT_ACTIVE
         self.speed_input_text = SPEED_INPUT_TEXT
         self.modify_mode = MODIFY_MODE
+        self.modify_cooldown = 0  # Cooldown timer for modify mode
+        
+        # Info state
+        self.info_mode = INFO_MODE
+        # Load the info image
+        try:
+            self.info_image = pygame.image.load(INFO_IMAGE_PATH)
+            self.info_image = pygame.transform.scale(self.info_image, (INFO_IMAGE_WIDTH, INFO_IMAGE_HEIGHT))
+        except pygame.error:
+            # Create a placeholder if image can't be loaded
+            self.info_image = pygame.Surface((INFO_IMAGE_WIDTH, INFO_IMAGE_HEIGHT))
+            self.info_image.fill((200, 200, 200))  # Light gray background
+            font = pygame.font.SysFont("Arial", 30)
+            text = font.render("Info Image Not Found", True, (0, 0, 0))
+            text_rect = text.get_rect(center=(INFO_IMAGE_WIDTH//2, INFO_IMAGE_HEIGHT//2))
+            self.info_image.blit(text, text_rect)
         
         # For handling fractional speeds
         self.step_accumulator = 0.0
@@ -213,6 +253,23 @@ class Simulation:
         self.title_font = pygame.font.SysFont("Arial", TITLE_SIZE, bold=True)
         self.button_font = pygame.font.SysFont("Arial", BUTTON_FONT_SIZE, bold=True)
     
+    def modify_cell(self, grid_x, grid_y):
+        """Helper function to modify a cell and play the appropriate sound"""
+        if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
+            current_cell = self.ant.grid[grid_x, grid_y]
+            self.ant.grid[grid_x, grid_y] = 1 - current_cell
+            
+            # Play appropriate sound based on the transition
+            if current_cell == 0:
+                # White to black transition
+                WHITE_TO_BLACK_SOUND.play()
+            else:
+                # Black to white transition
+                BLACK_TO_WHITE_SOUND.play()
+            
+            return True
+        return False
+
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -250,48 +307,64 @@ class Simulation:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 
-                # First check for button clicks
-                if self.is_point_in_rect(mouse_pos, (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
-                    # Exit button clicked
-                    self.running = False
-                elif self.is_point_in_rect(mouse_pos, (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
-                    # Info button clicked - no functionality yet
-                    pass
-                elif self.is_point_in_rect(mouse_pos, (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
-                    # Menu button clicked - toggle menu
-                    self.menu_open = not self.menu_open
-                elif self.menu_open:
-                    # Check menu option buttons only if menu is open
-                    if self.is_point_in_rect(mouse_pos, (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT)):
-                        # Speed button clicked - no functionality other than highlighting input field
-                        pass
-                    elif self.is_point_in_rect(mouse_pos, (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT)):
-                        # Speed input field clicked
-                        self.speed_input_active = True
-                        # Reset input text if it's the default value
-                        if self.speed_input_text == "1" and SIMULATION_SPEED != 1:
-                            self.speed_input_text = str(SIMULATION_SPEED)
-                    elif self.is_point_in_rect(mouse_pos, (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT)):
-                        # Pause/Play button clicked
-                        self.paused = not self.paused
-                    elif self.is_point_in_rect(mouse_pos, (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)):
-                        # Toggle modify mode
-                        self.modify_mode = not self.modify_mode
-                    elif self.is_point_in_rect(mouse_pos, (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)):
-                        # Reset button clicked
-                        self.ant = LangtonAnt(GRID_WIDTH, GRID_HEIGHT)
-                        self.step_accumulator = 0.0  # Reset accumulator on reset
-                    # If none of the menu buttons were clicked, continue to other checks
+                # Handle mouse wheel events
+                if event.button in (4, 5):  # Mouse wheel up/down
+                    self.zoom_at_point(mouse_pos, 1 if event.button == 4 else -1)
+                # Handle left mouse button
+                elif event.button == pygame.BUTTON_LEFT:
+                    self.mouse_button_down = True  # Set mouse button state to down
+                    self.last_modified_cell = None  # Reset last modified cell
+                    
+                    # First check for button clicks
+                    if self.is_point_in_rect(mouse_pos, (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
+                        # Exit button clicked
+                        self.running = False
+                    elif self.is_point_in_rect(mouse_pos, (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
+                        # Info button clicked - show info screen
+                        if self.menu_open:
+                            self.menu_open = False  # Close the menu
+                        self.info_mode = not self.info_mode  # Toggle info mode
+                    elif self.info_mode and self.is_point_in_rect(mouse_pos, (VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT)):
+                        # Video button clicked - open URL
+                        webbrowser.open(VIDEO_URL)
+                    elif self.is_point_in_rect(mouse_pos, (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT)):
+                        # Menu button clicked - toggle menu
+                        self.menu_open = not self.menu_open
+                    elif self.menu_open:
+                        # Check menu option buttons only if menu is open
+                        if self.is_point_in_rect(mouse_pos, (SPEED_BUTTON_X, SPEED_BUTTON_Y, SPEED_BUTTON_WIDTH, SPEED_BUTTON_HEIGHT)):
+                            # Speed button clicked - no functionality other than highlighting input field
+                            pass
+                        elif self.is_point_in_rect(mouse_pos, (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT)):
+                            # Speed input field clicked
+                            self.speed_input_active = True
+                            # Reset input text if it's the default value
+                            if self.speed_input_text == "1" and SIMULATION_SPEED != 1:
+                                self.speed_input_text = str(SIMULATION_SPEED)
+                        elif self.is_point_in_rect(mouse_pos, (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT)):
+                            # Pause/Play button clicked
+                            self.paused = not self.paused
+                        elif self.is_point_in_rect(mouse_pos, (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT)):
+                            # Toggle modify mode and set cooldown
+                            self.modify_mode = not self.modify_mode
+                            self.modify_cooldown = 10  # Set cooldown to 10 frames (about 1/6 of a second)
+                        elif self.is_point_in_rect(mouse_pos, (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)):
+                            # Reset button clicked
+                            self.ant = LangtonAnt(GRID_WIDTH, GRID_HEIGHT)
+                            self.step_accumulator = 0.0  # Reset accumulator on reset
+                        # If none of the menu buttons were clicked, continue to other checks
+                        else:
+                            # Handle other mouse actions
+                            self.handle_other_mouse_actions(event, mouse_pos)
                     else:
-                        # Handle other mouse actions
+                        # If not clicking on any buttons, handle other mouse actions
                         self.handle_other_mouse_actions(event, mouse_pos)
-                else:
-                    # If not clicking on any buttons, handle other mouse actions
-                    self.handle_other_mouse_actions(event, mouse_pos)
             
             elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == pygame.BUTTON_LEFT:
+                if event.button == pygame.BUTTON_LEFT:  # Only handle left mouse button
                     self.panning = False
+                    self.mouse_button_down = False  # Set mouse button state to up
+                    self.last_modified_cell = None  # Reset last modified cell
                     # Change cursor back to open hand when not panning
                     pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
             
@@ -307,6 +380,34 @@ class Simulation:
                     # Check if within grid bounds
                     if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
                         self.hovered_cell = (grid_x, grid_y)
+                        
+                        # If mouse button is down, handle continuous modification
+                        if self.mouse_button_down and self.modify_cooldown <= 0:
+                            current_cell = (grid_x, grid_y)
+                            
+                            # If this is a new cell and not the last modified one
+                            if current_cell != self.last_modified_cell:
+                                # Modify the current cell
+                                if self.modify_cell(grid_x, grid_y):
+                                    self.last_modified_cell = current_cell
+                                    
+                                    # If we have a last modified cell, interpolate between positions
+                                    if self.last_modified_cell is not None:
+                                        last_x, last_y = self.last_modified_cell
+                                        # Calculate the distance between cells
+                                        dx = grid_x - last_x
+                                        dy = grid_y - last_y
+                                        
+                                        # If the distance is greater than 1, interpolate
+                                        if abs(dx) > 1 or abs(dy) > 1:
+                                            # Calculate the number of steps needed
+                                            steps = max(abs(dx), abs(dy))
+                                            for i in range(1, steps):
+                                                # Calculate intermediate position
+                                                inter_x = last_x + (dx * i) // steps
+                                                inter_y = last_y + (dy * i) // steps
+                                                # Modify the intermediate cell
+                                                self.modify_cell(inter_x, inter_y)
                     else:
                         self.hovered_cell = (-1, -1)
                 else:
@@ -355,6 +456,10 @@ class Simulation:
             while self.step_accumulator >= 1.0:
                 self.ant.step()
                 self.step_accumulator -= 1.0
+        
+        # Update modify mode cooldown
+        if self.modify_cooldown > 0:
+            self.modify_cooldown -= 1
     
     def render(self):
         self.screen.fill(BG_COLOR)
@@ -426,7 +531,6 @@ class Simulation:
         
         # Draw buttons
         self.draw_button(EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, EXIT_BUTTON_TEXT)
-        self.draw_button(INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, INFO_BUTTON_TEXT) 
         self.draw_button(MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, MENU_BUTTON_TEXT)
         
         # Draw menu options if menu is open
@@ -461,6 +565,22 @@ class Simulation:
             # Draw reset button
             self.draw_button(RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT, RESET_BUTTON_TEXT)
         
+        # Draw info screen if in info mode
+        if self.info_mode:
+            # Draw a semi-transparent black background to darken the main screen
+            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))  # Black with 70% opacity
+            self.screen.blit(overlay, (0, 0))
+            
+            # Draw the info image in the center
+            self.screen.blit(self.info_image, (INFO_IMAGE_X, INFO_IMAGE_Y))
+            
+            # Draw the video link button
+            self.draw_button(VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT, VIDEO_BUTTON_TEXT)
+        
+        # Draw info button last so it's not affected by the overlay
+        self.draw_button(INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, INFO_BUTTON_TEXT)
+        
         pygame.display.flip()
     
     def draw_button(self, x, y, width, height, text, override_color=None):
@@ -485,12 +605,17 @@ class Simulation:
             button_name = "RESET"
         elif (x, y, width, height) == (STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT):
             button_name = "STEPS"
+        elif (x, y, width, height) == (VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT):
+            button_name = "VIDEO"
         
         # Determine button color based on hover and override
         if override_color:
             button_color = override_color
-        elif self.hovered_button == button_name and button_name != "SPEED":
-            # Apply hover effect to all buttons except SPEED
+        elif button_name == "INFO" and self.info_mode:
+            # Use purple color for info button when info mode is active
+            button_color = MODIFY_HIGHLIGHT_COLOR
+        elif self.hovered_button == button_name and button_name != "SPEED" and button_name != "STEPS":
+            # Apply hover effect to all buttons except SPEED and STEPS
             button_color = BUTTON_HOVER_COLOR
         else:
             button_color = BUTTON_COLOR
@@ -506,22 +631,17 @@ class Simulation:
     
     def handle_other_mouse_actions(self, event, mouse_pos):
         """Handle mouse actions that are not button clicks (panning, zooming, pixel modification)"""
-        # Handle pixel modification when in modify mode
-        if self.modify_mode and event.button == pygame.BUTTON_LEFT:
+        # Handle pixel modification when in modify mode and cooldown is over
+        if self.modify_mode and event.button == pygame.BUTTON_LEFT and self.modify_cooldown <= 0:
+            # Convert screen coordinates to grid coordinates
+            grid_x = int((mouse_pos[0] - self.offset_x) / self.zoom)
+            grid_y = int((mouse_pos[1] - self.offset_y) / self.zoom)
+            
             # Check if within grid bounds
-            grid_x, grid_y = self.hovered_cell
             if 0 <= grid_x < GRID_WIDTH and 0 <= grid_y < GRID_HEIGHT:
-                # Toggle cell state
-                current_cell = self.ant.grid[grid_x, grid_y]
-                self.ant.grid[grid_x, grid_y] = 1 - current_cell
-                
-                # Play appropriate sound based on the transition
-                if current_cell == 0:
-                    # White to black transition
-                    WHITE_TO_BLACK_SOUND.play()
-                else:
-                    # Black to white transition
-                    BLACK_TO_WHITE_SOUND.play()
+                # Modify the initial cell
+                if self.modify_cell(grid_x, grid_y):
+                    self.last_modified_cell = (grid_x, grid_y)
         
         # Handle panning with left mouse button (only when not in modify mode)
         elif not self.modify_mode and event.button == pygame.BUTTON_LEFT:
@@ -545,6 +665,10 @@ class Simulation:
             "MENU": (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
             "STEPS": (STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT)
         }
+        
+        # Add video button if in info mode
+        if self.info_mode:
+            button_regions["VIDEO"] = (VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT)
         
         # Add menu option buttons if menu is open
         if self.menu_open:
