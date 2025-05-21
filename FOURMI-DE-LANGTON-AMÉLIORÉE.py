@@ -93,6 +93,14 @@ RESET_BUTTON_WIDTH = BUTTON_WIDTH
 RESET_BUTTON_HEIGHT = BUTTON_HEIGHT
 RESET_BUTTON_TEXT = "RESET"
 
+# Constantes du bouton de sentier
+TRAIL_BUTTON_X = MENU_BUTTON_X
+TRAIL_BUTTON_Y = RESET_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+TRAIL_BUTTON_WIDTH = BUTTON_WIDTH
+TRAIL_BUTTON_HEIGHT = BUTTON_HEIGHT
+TRAIL_BUTTON_TEXT = "TRAIL"
+TRAIL_COLOR = (255, 0, 0)  # Rouge
+
 # Constantes de l'écran d'information
 INFO_MODE = False  # Suivi de l'affichage de l'écran d'information
 INFO_IMAGE_PATH = os.path.join("assets", "Info.png")
@@ -171,6 +179,9 @@ class LangtonAnt:
         ]
         
         self.steps = 0
+        
+        # Liste pour stocker les positions du sentier
+        self.trail = []
     
     def step(self):
         """Effectue une étape de l'algorithme de la fourmi de Langton"""
@@ -190,12 +201,19 @@ class LangtonAnt:
             BLACK_TO_WHITE_SOUND.play()
             self.direction = (self.direction - 1) % 4  # Tourner à gauche (sens anti-horaire)
         
+        # Ajouter la position actuelle au sentier avant de se déplacer
+        self.trail.append((self.ant_x, self.ant_y))
+        
         # Avancer
         dx, dy = self.movement[self.direction]
         self.ant_x = (self.ant_x + dx) % self.grid.shape[0]
         self.ant_y = (self.ant_y + dy) % self.grid.shape[1]
         
         self.steps += 1
+    
+    def clear_trail(self):
+        """Efface le sentier de la fourmi"""
+        self.trail = []
 
 class Simulation:
     def __init__(self):
@@ -230,6 +248,9 @@ class Simulation:
         self.speed_input_text = SPEED_INPUT_TEXT
         self.modify_mode = MODIFY_MODE
         self.modify_cooldown = 0  # Minuteur de délai pour le mode de modification
+        
+        # État du sentier
+        self.trail_active = False
         
         # État de l'info
         self.info_mode = INFO_MODE
@@ -362,6 +383,17 @@ class Simulation:
                             # Bouton de réinitialisation cliqué
                             self.ant = LangtonAnt(GRID_WIDTH, GRID_HEIGHT)
                             self.step_accumulator = 0.0  # Réinitialiser l'accumulateur lors de la réinitialisation
+                        elif self.is_point_in_rect(mouse_pos, (TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT)):
+                            # Bouton de sentier cliqué
+                            self.trail_active = not self.trail_active
+                            if self.trail_active:
+                                # Démarrer un nouveau sentier à partir de la position actuelle
+                                self.ant.clear_trail()
+                                # Ajouter uniquement la position actuelle comme point de départ
+                                self.ant.trail.append((self.ant.ant_x, self.ant.ant_y))
+                            else:
+                                # Effacer le sentier si désactivé
+                                self.ant.clear_trail()
                         # Si aucun des boutons du menu n'a été cliqué, continuer avec d'autres vérifications
                         else:
                             # Gérer d'autres actions de la souris
@@ -506,6 +538,19 @@ class Simulation:
                     # Dessiner la cellule noire
                     pygame.draw.rect(self.screen, CELL_ON_COLOR, cell_rect, border_radius=radius)
         
+        # Dessiner le sentier de la fourmi si actif
+        if self.trail_active and len(self.ant.trail) > 1:
+            # Convertir les positions du sentier en coordonnées de l'écran
+            screen_points = []
+            for x, y in self.ant.trail:
+                screen_x = int(self.offset_x + x * self.zoom + self.zoom // 2)
+                screen_y = int(self.offset_y + y * self.zoom + self.zoom // 2)
+                screen_points.append((screen_x, screen_y))
+            
+            # Dessiner le sentier comme une ligne rouge
+            if len(screen_points) > 1:
+                pygame.draw.lines(self.screen, TRAIL_COLOR, False, screen_points, max(1, int(self.zoom // 10)))
+        
         # Dessiner la fourmi comme un carré rouge arrondi
         ant_screen_x = int(self.offset_x + self.ant.ant_x * self.zoom)
         ant_screen_y = int(self.offset_y + self.ant.ant_y * self.zoom)
@@ -578,6 +623,15 @@ class Simulation:
             
             # Dessiner le bouton de réinitialisation
             self.draw_button(RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT, RESET_BUTTON_TEXT)
+            
+            # Dessiner le bouton de sentier avec le texte approprié
+            if self.trail_active:
+                # Quand actif, utiliser la couleur rouge
+                self.draw_button(TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT, 
+                               TRAIL_BUTTON_TEXT, override_color=TRAIL_COLOR)
+            else:
+                # Quand inactif, utiliser le comportement normal
+                self.draw_button(TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT, TRAIL_BUTTON_TEXT)
         
         # Dessiner l'écran d'information si en mode info
         if self.info_mode:
@@ -633,6 +687,8 @@ class Simulation:
             button_name = "VIDEO"
         elif (x, y, width, height) == (SPEED_MULT_BUTTON_X, SPEED_MULT_BUTTON_Y, SPEED_MULT_BUTTON_WIDTH, SPEED_MULT_BUTTON_HEIGHT):
             button_name = "SPEED_MULT"
+        elif (x, y, width, height) == (TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT):
+            button_name = "TRAIL"
         
         # Déterminer la couleur du bouton en fonction du survol et du remplacement
         if override_color:
@@ -707,7 +763,8 @@ class Simulation:
                 "SPEED_INPUT": (SPEED_INPUT_X, SPEED_INPUT_Y, SPEED_INPUT_WIDTH, SPEED_INPUT_HEIGHT),
                 "PAUSE": (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT),
                 "MODIFY": (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT),
-                "RESET": (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT)
+                "RESET": (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT),
+                "TRAIL": (TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT)
             })
         
         # Vérifier si la souris est sur un bouton
