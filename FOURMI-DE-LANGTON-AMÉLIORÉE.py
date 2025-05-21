@@ -9,6 +9,8 @@ import numpy as np
 import sys
 import os
 import webbrowser
+import base64
+import zlib
 
 # Initialisation de Pygame
 pygame.init()
@@ -100,6 +102,28 @@ TRAIL_BUTTON_WIDTH = BUTTON_WIDTH
 TRAIL_BUTTON_HEIGHT = BUTTON_HEIGHT
 TRAIL_BUTTON_TEXT = "TRAIL"
 TRAIL_COLOR = (255, 0, 0)  # Rouge
+
+# Constantes des boutons d'import/export
+EXPORT_BUTTON_X = MENU_BUTTON_X
+EXPORT_BUTTON_Y = TRAIL_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+EXPORT_BUTTON_WIDTH = BUTTON_WIDTH
+EXPORT_BUTTON_HEIGHT = BUTTON_HEIGHT
+EXPORT_BUTTON_TEXT = "EXPORT"
+
+IMPORT_BUTTON_X = MENU_BUTTON_X
+IMPORT_BUTTON_Y = EXPORT_BUTTON_Y + BUTTON_HEIGHT + BUTTON_MARGIN
+IMPORT_BUTTON_WIDTH = BUTTON_WIDTH
+IMPORT_BUTTON_HEIGHT = BUTTON_HEIGHT
+IMPORT_BUTTON_TEXT = "IMPORT"
+
+# Constantes des champs de texte
+TEXT_FIELD_WIDTH = 200
+TEXT_FIELD_HEIGHT = BUTTON_HEIGHT
+TEXT_FIELD_X = EXPORT_BUTTON_X - TEXT_FIELD_WIDTH - 5  # 5 pixels de marge
+TEXT_FIELD_COLOR = (100, 100, 100)  # Même couleur que les boutons
+TEXT_FIELD_ACTIVE_COLOR = (255, 255, 255)  # Blanc
+TEXT_FIELD_TEXT_COLOR = (0, 0, 0)  # Noir
+TEXT_FIELD_FONT_SIZE = 12
 
 # Constantes de l'écran d'information
 INFO_MODE = False  # Suivi de l'affichage de l'écran d'information
@@ -252,6 +276,12 @@ class Simulation:
         # État du sentier
         self.trail_active = False
         
+        # État des champs d'import/export
+        self.export_field_active = False
+        self.import_field_active = False
+        self.export_text = ""
+        self.import_text = ""
+        
         # État de l'info
         self.info_mode = INFO_MODE
         # Charger l'image d'information
@@ -328,6 +358,32 @@ class Simulation:
                         # N'ajouter que des chiffres et le point décimal
                         if event.unicode.isdigit() or event.unicode == '.':
                             self.speed_input_text += event.unicode
+                
+                # Gérer le champ d'importation
+                elif self.import_field_active:
+                    if event.key == pygame.K_RETURN:
+                        # Tenter d'importer le modèle
+                        self.import_design()
+                        self.import_field_active = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.import_text = self.import_text[:-1]
+                    elif event.key == pygame.K_v and (pygame.key.get_mods() & pygame.KMOD_CTRL):
+                        # Coller le contenu du presse-papiers lors de Ctrl+V
+                        try:
+                            pygame.scrap.init()
+                            clipboard_content = pygame.scrap.get(pygame.SCRAP_TEXT)
+                            if clipboard_content:
+                                # Décoder le contenu du presse-papiers et le nettoyer
+                                clipboard_text = clipboard_content.decode('utf-8').strip()
+                                self.import_text = clipboard_text
+                                print(f"Collé depuis le presse-papiers: {len(clipboard_text)} caractères")
+                        except Exception as e:
+                            print(f"Erreur lors du collage: {e}")
+                    else:
+                        # Autoriser tous les caractères pour le code d'import
+                        # Mais limiter la longueur pour éviter les problèmes de rendu
+                        if len(self.import_text) < 1000:  # Limite raisonnable
+                            self.import_text += event.unicode
             
             # Contrôles de souris pour les boutons et le déplacement
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -394,6 +450,35 @@ class Simulation:
                             else:
                                 # Effacer le sentier si désactivé
                                 self.ant.clear_trail()
+                        elif self.is_point_in_rect(mouse_pos, (EXPORT_BUTTON_X, EXPORT_BUTTON_Y, EXPORT_BUTTON_WIDTH, EXPORT_BUTTON_HEIGHT)):
+                            # Bouton d'exportation cliqué
+                            self.export_field_active = not self.export_field_active
+                            if self.export_field_active:
+                                # Générer le code d'exportation
+                                self.export_text = self.export_design()
+                                # Désactiver le champ d'importation si actif
+                                self.import_field_active = False
+                        elif self.is_point_in_rect(mouse_pos, (IMPORT_BUTTON_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_WIDTH, IMPORT_BUTTON_HEIGHT)):
+                            # Bouton d'importation cliqué
+                            self.import_field_active = not self.import_field_active
+                            if self.import_field_active:
+                                # Réinitialiser le texte d'importation
+                                self.import_text = ""
+                                # Désactiver le champ d'exportation si actif
+                                self.export_field_active = False
+                        # Vérifier si un champ de texte est cliqué
+                        elif self.export_field_active and self.is_point_in_rect(mouse_pos, (TEXT_FIELD_X, EXPORT_BUTTON_Y, TEXT_FIELD_WIDTH, TEXT_FIELD_HEIGHT)):
+                            # Sélectionner tout le texte pour faciliter la copie
+                            try:
+                                # Initialiser le presse-papiers et copier le texte
+                                pygame.scrap.init()
+                                pygame.scrap.put(pygame.SCRAP_TEXT, self.export_text.encode())
+                                print("Code d'exportation copié dans le presse-papiers.")
+                            except Exception as e:
+                                print(f"Erreur lors de la copie: {e}")
+                        elif self.import_field_active and self.is_point_in_rect(mouse_pos, (TEXT_FIELD_X, IMPORT_BUTTON_Y, TEXT_FIELD_WIDTH, TEXT_FIELD_HEIGHT)):
+                            # Activer le champ d'importation pour la saisie
+                            pass
                         # Si aucun des boutons du menu n'a été cliqué, continuer avec d'autres vérifications
                         else:
                             # Gérer d'autres actions de la souris
@@ -632,6 +717,69 @@ class Simulation:
             else:
                 # Quand inactif, utiliser le comportement normal
                 self.draw_button(TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT, TRAIL_BUTTON_TEXT)
+            
+            # Dessiner les boutons d'import/export
+            self.draw_button(EXPORT_BUTTON_X, EXPORT_BUTTON_Y, EXPORT_BUTTON_WIDTH, EXPORT_BUTTON_HEIGHT, EXPORT_BUTTON_TEXT)
+            self.draw_button(IMPORT_BUTTON_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_WIDTH, IMPORT_BUTTON_HEIGHT, IMPORT_BUTTON_TEXT)
+            
+            # Dessiner les champs de texte si actifs
+            if self.export_field_active:
+                # Dessiner le champ d'exportation
+                export_field_rect = pygame.Rect(TEXT_FIELD_X, EXPORT_BUTTON_Y, TEXT_FIELD_WIDTH, TEXT_FIELD_HEIGHT)
+                pygame.draw.rect(self.screen, TEXT_FIELD_ACTIVE_COLOR, export_field_rect, border_radius=BUTTON_BORDER_RADIUS)
+                pygame.draw.rect(self.screen, BUTTON_COLOR, export_field_rect, width=2, border_radius=BUTTON_BORDER_RADIUS)
+                
+                # Rendre le texte d'exportation (avec troncature si nécessaire)
+                font = pygame.font.SysFont("Arial", TEXT_FIELD_FONT_SIZE)
+                display_text = self.export_text
+                if font.size(display_text)[0] > TEXT_FIELD_WIDTH - 10:  # 10 pixels de marge
+                    # Tronquer le texte et ajouter "..." à la fin
+                    while font.size(display_text + "...")[0] > TEXT_FIELD_WIDTH - 10 and len(display_text) > 0:
+                        display_text = display_text[:-1]
+                    display_text += "..."
+                
+                text_surface = font.render(display_text, True, TEXT_FIELD_TEXT_COLOR)
+                text_rect = text_surface.get_rect(midleft=(TEXT_FIELD_X + 5, EXPORT_BUTTON_Y + TEXT_FIELD_HEIGHT // 2))
+                self.screen.blit(text_surface, text_rect)
+                
+                # Ajouter un texte d'instruction pour la copie
+                hint_font = pygame.font.SysFont("Arial", 10)
+                hint_text = "Cliquer pour copier"
+                hint_surface = hint_font.render(hint_text, True, (100, 100, 100))
+                hint_rect = hint_surface.get_rect(midleft=(TEXT_FIELD_X + 5, EXPORT_BUTTON_Y + TEXT_FIELD_HEIGHT + 8))
+                self.screen.blit(hint_surface, hint_rect)
+                
+                # Afficher la longueur du code exporté
+                length_text = f"{len(self.export_text)} caractères"
+                length_surface = hint_font.render(length_text, True, (100, 100, 100))
+                length_rect = length_surface.get_rect(midright=(TEXT_FIELD_X + TEXT_FIELD_WIDTH - 5, EXPORT_BUTTON_Y + TEXT_FIELD_HEIGHT + 8))
+                self.screen.blit(length_surface, length_rect)
+            
+            if self.import_field_active:
+                # Dessiner le champ d'importation
+                import_field_rect = pygame.Rect(TEXT_FIELD_X, IMPORT_BUTTON_Y, TEXT_FIELD_WIDTH, TEXT_FIELD_HEIGHT)
+                pygame.draw.rect(self.screen, TEXT_FIELD_ACTIVE_COLOR, import_field_rect, border_radius=BUTTON_BORDER_RADIUS)
+                pygame.draw.rect(self.screen, BUTTON_COLOR, import_field_rect, width=2, border_radius=BUTTON_BORDER_RADIUS)
+                
+                # Rendre le texte d'importation (avec troncature si nécessaire)
+                font = pygame.font.SysFont("Arial", TEXT_FIELD_FONT_SIZE)
+                
+                # Afficher un indicateur si le texte est présent mais non affiché
+                if self.import_text:
+                    display_text = f"[Code: {len(self.import_text)} caractères]"
+                else:
+                    display_text = "Coller avec Ctrl+V"
+                    
+                text_surface = font.render(display_text, True, TEXT_FIELD_TEXT_COLOR)
+                text_rect = text_surface.get_rect(midleft=(TEXT_FIELD_X + 5, IMPORT_BUTTON_Y + TEXT_FIELD_HEIGHT // 2))
+                self.screen.blit(text_surface, text_rect)
+                
+                # Ajouter un texte d'instruction pour l'importation
+                hint_font = pygame.font.SysFont("Arial", 10)
+                hint_text = "Ctrl+V pour coller, Entrée pour importer"
+                hint_surface = hint_font.render(hint_text, True, (100, 100, 100))
+                hint_rect = hint_surface.get_rect(midleft=(TEXT_FIELD_X + 5, IMPORT_BUTTON_Y + TEXT_FIELD_HEIGHT + 8))
+                self.screen.blit(hint_surface, hint_rect)
         
         # Dessiner l'écran d'information si en mode info
         if self.info_mode:
@@ -689,6 +837,10 @@ class Simulation:
             button_name = "SPEED_MULT"
         elif (x, y, width, height) == (TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT):
             button_name = "TRAIL"
+        elif (x, y, width, height) == (EXPORT_BUTTON_X, EXPORT_BUTTON_Y, EXPORT_BUTTON_WIDTH, EXPORT_BUTTON_HEIGHT):
+            button_name = "EXPORT"
+        elif (x, y, width, height) == (IMPORT_BUTTON_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_WIDTH, IMPORT_BUTTON_HEIGHT):
+            button_name = "IMPORT"
         
         # Déterminer la couleur du bouton en fonction du survol et du remplacement
         if override_color:
@@ -764,7 +916,9 @@ class Simulation:
                 "PAUSE": (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT),
                 "MODIFY": (MODIFY_BUTTON_X, MODIFY_BUTTON_Y, MODIFY_BUTTON_WIDTH, MODIFY_BUTTON_HEIGHT),
                 "RESET": (RESET_BUTTON_X, RESET_BUTTON_Y, RESET_BUTTON_WIDTH, RESET_BUTTON_HEIGHT),
-                "TRAIL": (TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT)
+                "TRAIL": (TRAIL_BUTTON_X, TRAIL_BUTTON_Y, TRAIL_BUTTON_WIDTH, TRAIL_BUTTON_HEIGHT),
+                "EXPORT": (EXPORT_BUTTON_X, EXPORT_BUTTON_Y, EXPORT_BUTTON_WIDTH, EXPORT_BUTTON_HEIGHT),
+                "IMPORT": (IMPORT_BUTTON_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_WIDTH, IMPORT_BUTTON_HEIGHT)
             })
         
         # Vérifier si la souris est sur un bouton
@@ -788,6 +942,106 @@ class Simulation:
         
         pygame.quit()
         sys.exit()
+
+    def export_design(self):
+        """Exporte le design actuel sous forme de chaîne encodée"""
+        try:
+            # Convertir la grille en bytes
+            grid_bytes = self.ant.grid.tobytes()
+            
+            # Compresser les données
+            compressed_data = zlib.compress(grid_bytes, level=9)
+            
+            # Encoder en base64 pour obtenir une chaîne de caractères
+            encoded_data = base64.b64encode(compressed_data).decode('utf-8')
+            
+            # Préfixer avec la taille de la grille pour la reconstruction
+            export_code = f"{GRID_WIDTH},{GRID_HEIGHT}:{encoded_data}"
+            
+            print(f"Design exporté avec succès! Longueur du code: {len(export_code)} caractères")
+            return export_code
+            
+        except Exception as e:
+            print(f"Erreur lors de l'exportation du design: {e}")
+            return "ERREUR"
+    
+    def import_design(self):
+        """Importe un design à partir d'une chaîne encodée"""
+        try:
+            # Vérifier que le texte d'importation n'est pas vide
+            if not self.import_text:
+                print("Erreur: Le code d'importation est vide.")
+                return
+            
+            # Vérifier si le format est correct (doit contenir ":")
+            if ":" not in self.import_text:
+                print("Erreur: Format de code invalide. Le code doit contenir le caractère ':'")
+                return
+            
+            # Séparer les métadonnées des données
+            metadata, encoded_data = self.import_text.split(":", 1)  # Limite à 1 split pour gérer les ':' dans le code base64
+            
+            # Vérifier si les métadonnées sont au bon format
+            if "," not in metadata:
+                print("Erreur: Format de métadonnées invalide. Les dimensions doivent être séparées par une virgule.")
+                return
+                
+            # Extraire les dimensions
+            try:
+                width, height = map(int, metadata.split(","))
+            except ValueError:
+                print(f"Erreur: Impossible de lire les dimensions: {metadata}")
+                return
+            
+            # Vérifier que les dimensions correspondent
+            if width != GRID_WIDTH or height != GRID_HEIGHT:
+                print(f"Erreur: Les dimensions ne correspondent pas. Attendu: {GRID_WIDTH}x{GRID_HEIGHT}, Reçu: {width}x{height}")
+                return
+            
+            try:
+                # Décoder les données
+                decoded_data = base64.b64decode(encoded_data)
+                
+                # Décompresser les données
+                decompressed_data = zlib.decompress(decoded_data)
+                
+                # Reconstruire la grille
+                grid_array = np.frombuffer(decompressed_data, dtype=int).reshape(width, height)
+                
+                # Créer une nouvelle instance de fourmi avec la grille importée
+                new_ant = LangtonAnt(width, height)
+                new_ant.grid = grid_array.copy()
+                
+                # Placer la fourmi au milieu
+                new_ant.ant_x = width // 2
+                new_ant.ant_y = height // 2
+                new_ant.direction = 0
+                
+                # Réinitialiser le compteur de pas
+                new_ant.steps = 0
+                
+                # Remplacer l'ancienne fourmi par la nouvelle
+                self.ant = new_ant
+                
+                # Réinitialiser l'accumulateur de pas
+                self.step_accumulator = 0.0
+                
+                # Réinitialiser le sentier et désactiver le mode sentier
+                self.trail_active = False
+                
+                print("Design importé avec succès!")
+                
+            except base64.binascii.Error:
+                print("Erreur: Code base64 invalide.")
+            except zlib.error:
+                print("Erreur: Impossible de décompresser les données.")
+            except ValueError as e:
+                print(f"Erreur lors de la reconstruction de la grille: {e}")
+                
+        except Exception as e:
+            print(f"Erreur lors de l'importation du design: {e}")
+            import traceback
+            traceback.print_exc()
 
 # Point d'entrée principal
 if __name__ == "__main__":
