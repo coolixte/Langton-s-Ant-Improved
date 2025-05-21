@@ -955,8 +955,8 @@ class Simulation:
             # Encoder en base64 pour obtenir une chaîne de caractères
             encoded_data = base64.b64encode(compressed_data).decode('utf-8')
             
-            # Préfixer avec la taille de la grille pour la reconstruction
-            export_code = f"{GRID_WIDTH},{GRID_HEIGHT}:{encoded_data}"
+            # Préfixer avec la taille de la grille et le nombre de pas pour la reconstruction
+            export_code = f"{GRID_WIDTH},{GRID_HEIGHT},{self.ant.steps}:{encoded_data}"
             
             print(f"Design exporté avec succès! Longueur du code: {len(export_code)} caractères")
             return export_code
@@ -982,15 +982,18 @@ class Simulation:
             metadata, encoded_data = self.import_text.split(":", 1)  # Limite à 1 split pour gérer les ':' dans le code base64
             
             # Vérifier si les métadonnées sont au bon format
-            if "," not in metadata:
+            metadata_parts = metadata.split(",")
+            if len(metadata_parts) < 2:
                 print("Erreur: Format de métadonnées invalide. Les dimensions doivent être séparées par une virgule.")
                 return
                 
-            # Extraire les dimensions
+            # Extraire les dimensions et le nombre de pas (s'il existe)
             try:
-                width, height = map(int, metadata.split(","))
+                width = int(metadata_parts[0])
+                height = int(metadata_parts[1])
+                steps = int(metadata_parts[2]) if len(metadata_parts) > 2 else 0
             except ValueError:
-                print(f"Erreur: Impossible de lire les dimensions: {metadata}")
+                print(f"Erreur: Impossible de lire les dimensions ou le nombre de pas: {metadata}")
                 return
             
             # Vérifier que les dimensions correspondent
@@ -1017,8 +1020,8 @@ class Simulation:
                 new_ant.ant_y = height // 2
                 new_ant.direction = 0
                 
-                # Réinitialiser le compteur de pas
-                new_ant.steps = 0
+                # Définir le compteur de pas avec la valeur importée
+                new_ant.steps = steps
                 
                 # Remplacer l'ancienne fourmi par la nouvelle
                 self.ant = new_ant
@@ -1029,7 +1032,7 @@ class Simulation:
                 # Réinitialiser le sentier et désactiver le mode sentier
                 self.trail_active = False
                 
-                print("Design importé avec succès!")
+                print(f"Design importé avec succès! Nombre de pas: {steps}")
                 
             except base64.binascii.Error:
                 print("Erreur: Code base64 invalide.")
