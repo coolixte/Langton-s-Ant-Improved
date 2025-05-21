@@ -67,7 +67,7 @@ SPEED_INPUT_Y = SPEED_BUTTON_Y
 SPEED_INPUT_WIDTH = 50
 SPEED_INPUT_HEIGHT = BUTTON_HEIGHT
 SPEED_INPUT_ACTIVE = False
-SPEED_INPUT_TEXT = "1"
+SPEED_INPUT_TEXT = "0.3"
 
 # Bouton Pause/Lecture
 PAUSE_BUTTON_X = MENU_BUTTON_X
@@ -125,6 +125,13 @@ STEPS_BUTTON_X = WINDOW_WIDTH // 2 - STEPS_BUTTON_WIDTH // 2  # Centré en utili
 STEPS_BUTTON_Y = ATTRIBUTION_Y - BUTTON_HEIGHT - 10  # Au-dessus de l'attribution avec une marge de 10px
 STEPS_BUTTON_HEIGHT = BUTTON_HEIGHT
 
+# Constantes du bouton multiplicateur de vitesse
+SPEED_MULT_BUTTON_WIDTH = BUTTON_WIDTH
+SPEED_MULT_BUTTON_X = 10  # 10 pixels du bord gauche
+SPEED_MULT_BUTTON_Y = WINDOW_HEIGHT - BUTTON_HEIGHT - BUTTON_MARGIN  # Même hauteur que le bouton EXIT
+SPEED_MULT_BUTTON_HEIGHT = BUTTON_HEIGHT
+SPEED_MULT_BUTTON_TEXT = "×6"
+
 # Constantes du texte du titre
 TITLE_TEXT = "FOURMI DE LANGTON AMÉLIORÉE"
 TITLE_X = WINDOW_WIDTH // 2  # Centré horizontalement
@@ -138,7 +145,7 @@ INSTRUCTION_Y = 50  # Ajusté pour être sous le titre
 INSTRUCTION_SIZE = 12  # Taille de police
 
 # Paramètres de simulation
-SIMULATION_SPEED = 1  # Pas par image (supporte maintenant les valeurs fractionnaires)
+SIMULATION_SPEED = 0.3  # Pas par image (supporte maintenant les valeurs fractionnaires)
 
 
 # MAIN ✦ ---------------------------------------------------------------------------------------
@@ -211,6 +218,7 @@ class Simulation:
         self.hovered_button = None  # Suivi du bouton actuellement survolé
         self.mouse_button_down = False  # Suivi si le bouton de la souris est maintenu enfoncé
         self.last_modified_cell = None  # Suivi de la dernière cellule modifiée
+        self.speed_mult_button_pressed = False  # Suivi de l'état du bouton multiplicateur de vitesse
         
         # État de la simulation
         self.running = True
@@ -304,6 +312,11 @@ class Simulation:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 
+                # Vérifier si le bouton multiplicateur de vitesse est cliqué
+                if self.is_point_in_rect(mouse_pos, (SPEED_MULT_BUTTON_X, SPEED_MULT_BUTTON_Y, SPEED_MULT_BUTTON_WIDTH, SPEED_MULT_BUTTON_HEIGHT)):
+                    self.speed_mult_button_pressed = True
+                    return
+                
                 # Gérer les événements de la molette de souris
                 if event.button in (4, 5):  # Molette vers le haut/bas
                     self.zoom_at_point(mouse_pos, 1 if event.button == 4 else -1)
@@ -336,7 +349,7 @@ class Simulation:
                             # Champ de saisie de vitesse cliqué
                             self.speed_input_active = True
                             # Réinitialiser le texte de saisie s'il s'agit de la valeur par défaut
-                            if self.speed_input_text == "1" and SIMULATION_SPEED != 1:
+                            if self.speed_input_text == "0.3" and SIMULATION_SPEED != 0.3:
                                 self.speed_input_text = str(SIMULATION_SPEED)
                         elif self.is_point_in_rect(mouse_pos, (PAUSE_BUTTON_X, PAUSE_BUTTON_Y, PAUSE_BUTTON_WIDTH, PAUSE_BUTTON_HEIGHT)):
                             # Bouton Pause/Lecture cliqué
@@ -362,6 +375,7 @@ class Simulation:
                     self.panning = False
                     self.mouse_button_down = False  # Définir l'état du bouton de la souris comme relâché
                     self.last_modified_cell = None  # Réinitialiser la dernière cellule modifiée
+                    self.speed_mult_button_pressed = False  # Réinitialiser l'état du bouton multiplicateur
                     # Changer le curseur en main ouverte lorsqu'il n'y a pas de déplacement
                     pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
             
@@ -446,8 +460,11 @@ class Simulation:
     
     def update(self):
         if not self.paused:
+            # Calculer la vitesse effective en fonction de l'état du bouton multiplicateur
+            effective_speed = SIMULATION_SPEED * 4 if self.speed_mult_button_pressed else SIMULATION_SPEED
+            
             # Accumuler les pas en fonction de la vitesse de simulation
-            self.step_accumulator += SIMULATION_SPEED
+            self.step_accumulator += effective_speed
             
             # Effectuer des pas entiers lorsque l'accumulateur atteint ou dépasse 1.0
             while self.step_accumulator >= 1.0:
@@ -578,6 +595,16 @@ class Simulation:
         # Dessiner le bouton d'info en dernier pour qu'il ne soit pas affecté par la superposition
         self.draw_button(INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, INFO_BUTTON_TEXT)
         
+        # Dessiner le bouton multiplicateur de vitesse
+        if self.speed_mult_button_pressed:
+            # Utiliser la couleur violette quand le bouton est pressé
+            self.draw_button(SPEED_MULT_BUTTON_X, SPEED_MULT_BUTTON_Y, SPEED_MULT_BUTTON_WIDTH, SPEED_MULT_BUTTON_HEIGHT, 
+                           SPEED_MULT_BUTTON_TEXT, override_color=MODIFY_HIGHLIGHT_COLOR)
+        else:
+            # Utiliser le comportement normal (gris au survol) quand non pressé
+            self.draw_button(SPEED_MULT_BUTTON_X, SPEED_MULT_BUTTON_Y, SPEED_MULT_BUTTON_WIDTH, SPEED_MULT_BUTTON_HEIGHT, 
+                           SPEED_MULT_BUTTON_TEXT)
+        
         pygame.display.flip()
     
     def draw_button(self, x, y, width, height, text, override_color=None):
@@ -604,6 +631,8 @@ class Simulation:
             button_name = "STEPS"
         elif (x, y, width, height) == (VIDEO_BUTTON_X, VIDEO_BUTTON_Y, VIDEO_BUTTON_WIDTH, VIDEO_BUTTON_HEIGHT):
             button_name = "VIDEO"
+        elif (x, y, width, height) == (SPEED_MULT_BUTTON_X, SPEED_MULT_BUTTON_Y, SPEED_MULT_BUTTON_WIDTH, SPEED_MULT_BUTTON_HEIGHT):
+            button_name = "SPEED_MULT"
         
         # Déterminer la couleur du bouton en fonction du survol et du remplacement
         if override_color:
@@ -663,7 +692,8 @@ class Simulation:
             "EXIT": (EXIT_BUTTON_X, EXIT_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
             "INFO": (INFO_BUTTON_X, INFO_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
             "MENU": (MENU_BUTTON_X, MENU_BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT),
-            "STEPS": (STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT)
+            "STEPS": (STEPS_BUTTON_X, STEPS_BUTTON_Y, STEPS_BUTTON_WIDTH, STEPS_BUTTON_HEIGHT),
+            "SPEED_MULT": (SPEED_MULT_BUTTON_X, SPEED_MULT_BUTTON_Y, SPEED_MULT_BUTTON_WIDTH, SPEED_MULT_BUTTON_HEIGHT)
         }
         
         # Ajouter le bouton vidéo si en mode info
